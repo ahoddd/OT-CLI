@@ -1,12 +1,6 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import Mapbox from '@rnmapbox/maps';
+import React from 'react';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Partner, MOCK_PARTNERS } from '../constants/MockData';
-import { OrbPin } from './OrbPin';
-import { useFlags } from './FlagContext';
-
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVtcCIsImEiOiJjbHJsIn0.temp';
-Mapbox.setAccessToken(MAPBOX_TOKEN);
 
 interface OrbMapProps {
   onSelectPartner: (p: Partner) => void;
@@ -14,59 +8,31 @@ interface OrbMapProps {
 }
 
 export const OrbMap = ({ onSelectPartner, selectedId }: OrbMapProps) => {
-  const { flags } = useFlags();
-
-  if (!flags.isMapboxEnabled) {
-    return (
-      <View style={styles.fallback}>
-        <Text style={styles.fallbackText}>Map Disabled (Flag OFF)</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <Mapbox.MapView style={styles.map} styleURL={Mapbox.StyleURL.Dark}>
-        <Mapbox.Camera
-          zoomLevel={14}
-          centerCoordinate={[-74.0060, 40.7128]}
-          animationMode={'flyTo'}
-          animationDuration={0}
-        />
-        <Mapbox.ShapeSource id="partners" shape={{
-          type: 'FeatureCollection',
-          features: MOCK_PARTNERS.map(p => ({
-            type: 'Feature',
-            id: p.id,
-            geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
-            properties: { ...p }
-          }))
-        }} onPress={(e: any) => {
-           const id = e.features?.[0]?.id as string;
-           const p = MOCK_PARTNERS.find(x => x.id === id);
-           if (p) onSelectPartner(p);
-        }}>
-          <Mapbox.SymbolLayer id="partnerSymbols" style={{ iconImage: 'circle', iconSize: 0 }} />
-        </Mapbox.ShapeSource>
-        
-        {MOCK_PARTNERS.map((p) => (
-          <Mapbox.PointAnnotation
-            key={p.id}
-            id={p.id}
-            coordinate={[p.lon, p.lat]}
-            onSelected={() => onSelectPartner(p)}
+      <Text style={styles.text}>MAP DISABLED (NO NATIVE)</Text>
+      <View style={styles.list}>
+        {MOCK_PARTNERS.map(p => (
+          <TouchableOpacity 
+            key={p.id} 
+            style={[styles.item, selectedId === p.id && styles.selected]} 
+            onPress={() => onSelectPartner(p)}
           >
-            <OrbPin tier={p.tier} selected={selectedId === p.id} />
-          </Mapbox.PointAnnotation>
+            <View style={[styles.dot, { backgroundColor: p.verified ? '#38bdf8' : '#94a3b8' }]} />
+            <Text style={styles.itemName}>{p.name}</Text>
+          </TouchableOpacity>
         ))}
-      </Mapbox.MapView>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  map: { flex: 1 },
-  fallback: { flex: 1, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
-  fallbackText: { color: '#666' }
+  container: { flex: 1, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
+  text: { color: '#666', fontWeight: 'bold', marginBottom: 20 },
+  list: { width: '80%' },
+  item: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#222', marginBottom: 8, borderRadius: 8 },
+  selected: { borderColor: '#fff', borderWidth: 1 },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
+  itemName: { color: '#fff', fontWeight: 'bold' }
 });

@@ -1,14 +1,16 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MOCK_PARTNERS, MOCK_PERKS, TIER_COLORS } from '../../constants/MockData';
 import { VerifiedBadge } from '../../components/VerifiedBadge';
 import { Ionicons } from '@expo/vector-icons';
+import { useSocial } from '../../hooks/useSocial';
 
 export default function PartnerScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { isFollowing, toggleFollow } = useSocial();
   
   const partner = MOCK_PARTNERS.find(p => p.id === id);
   const perks = MOCK_PERKS.filter(p => p.partnerId === id);
@@ -16,11 +18,11 @@ export default function PartnerScreen() {
   if (!partner) return <View style={styles.container}><Text style={styles.error}>Partner not found</Text></View>;
 
   const tierColor = TIER_COLORS[partner.tier];
+  const following = isFollowing(partner.id);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView>
-        {/* Header / Hero */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -41,23 +43,26 @@ export default function PartnerScreen() {
           
           <Text style={styles.description}>{partner.description}</Text>
 
-          {/* Actions */}
           <View style={styles.actionRow}>
-            <TouchableOpacity style={[styles.actionBtn, { borderColor: tierColor }]}>
-              <Text style={[styles.actionText, { color: tierColor }]}>Follow</Text>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { borderColor: tierColor, backgroundColor: following ? tierColor : 'transparent' }]}
+              onPress={() => toggleFollow(partner.id)}
+            >
+              <Text style={[styles.actionText, { color: following ? '#000' : tierColor }]}>
+                {following ? 'Following' : 'Follow'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.reportBtn} onPress={() => router.push('/report')}>
               <Text style={styles.reportText}>Report</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Perks List */}
           <Text style={styles.sectionTitle}>Available Perks</Text>
           {perks.map(perk => (
             <TouchableOpacity 
               key={perk.id} 
               style={[styles.perkCard, { borderLeftColor: TIER_COLORS[perk.tier] }]}
-              onPress={() => router.push(`/perk/${perk.id}`)}
+              onPress={() => router.push(`/perk/${perk.id}` as any)}
             >
               <Text style={styles.perkTitle}>{perk.title}</Text>
               <Text style={styles.perkDesc}>{perk.description}</Text>

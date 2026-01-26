@@ -1,5 +1,5 @@
 export const DEFAULT_FLAGS = {
-  isMapboxEnabled: true,
+  isMapboxEnabled: false,
   isFirestoreLiveEnabled: false,
   isRedemptionEnabled: true,
   isShareEnabled: true,
@@ -11,6 +11,5 @@ export const DEFAULT_FLAGS = {
   isPartnerProEnabled: false,
   isDebugMenuEnabled: false,
 };
-
 export type FeatureFlags = typeof DEFAULT_FLAGS;
 export type FlagKey = keyof FeatureFlags;

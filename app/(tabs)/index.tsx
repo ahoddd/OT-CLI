@@ -4,7 +4,8 @@ import { OrbMap } from '../../components/OrbMap';
 import { OrbSheet } from '../../components/OrbSheet';
 import { Partner } from '../../constants/MockData';
 
-export default function MapScreen() {
+// Explicitly named function for export
+export default function MapScreenEntry() {
   const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
 
   return (

@@ -46,6 +46,8 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "scheme": "orbtap",
+    "newArchEnabled": false
   }
 }
