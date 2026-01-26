@@ -5,7 +5,6 @@ import { Partner, MOCK_PARTNERS } from '../constants/MockData';
 import { OrbPin } from './OrbPin';
 import { useFlags } from './FlagContext';
 
-// NOTE: Replace with real token in .env or EXPO_PUBLIC_MAPBOX_TOKEN
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVtcCIsImEiOiJjbHJsIn0.temp';
 Mapbox.setAccessToken(MAPBOX_TOKEN);
 
@@ -25,8 +24,6 @@ export const OrbMap = ({ onSelectPartner, selectedId }: OrbMapProps) => {
     );
   }
 
-  // Fallback for Expo Go (Mapbox typically crashes or doesn't load in Go)
-  // In a real build, this works.
   return (
     <View style={styles.container}>
       <Mapbox.MapView style={styles.map} styleURL={Mapbox.StyleURL.Dark}>
@@ -44,15 +41,14 @@ export const OrbMap = ({ onSelectPartner, selectedId }: OrbMapProps) => {
             geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
             properties: { ...p }
           }))
-        }} onPress={(e) => {
-           const id = e.features[0]?.id as string;
+        }} onPress={(e: any) => {
+           const id = e.features?.[0]?.id as string;
            const p = MOCK_PARTNERS.find(x => x.id === id);
            if (p) onSelectPartner(p);
         }}>
           <Mapbox.SymbolLayer id="partnerSymbols" style={{ iconImage: 'circle', iconSize: 0 }} />
         </Mapbox.ShapeSource>
         
-        {/* Custom Point Annotations for visuals */}
         {MOCK_PARTNERS.map((p) => (
           <Mapbox.PointAnnotation
             key={p.id}

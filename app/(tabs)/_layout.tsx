@@ -18,28 +18,28 @@ export default function TabLayout() {
         name="index" 
         options={{ 
           title: 'Map',
-          tabBarIcon: ({ color }) => <Ionicons name="map" size={24} color={color} />
+          tabBarIcon: ({ color }: { color: string }) => <Ionicons name="map" size={24} color={color} />
         }} 
       />
       <Tabs.Screen 
         name="scan" 
         options={{ 
           title: 'Scan',
-          tabBarIcon: ({ color }) => <Ionicons name="qr-code" size={24} color={color} />
+          tabBarIcon: ({ color }: { color: string }) => <Ionicons name="qr-code" size={24} color={color} />
         }} 
       />
       <Tabs.Screen 
         name="wallet" 
         options={{ 
           title: 'Wallet',
-          tabBarIcon: ({ color }) => <Ionicons name="wallet" size={24} color={color} />
+          tabBarIcon: ({ color }: { color: string }) => <Ionicons name="wallet" size={24} color={color} />
         }} 
       />
       <Tabs.Screen 
         name="profile" 
         options={{ 
           title: 'Profile',
-          tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />
+          tabBarIcon: ({ color }: { color: string }) => <Ionicons name="person" size={24} color={color} />
         }} 
       />
     </Tabs>

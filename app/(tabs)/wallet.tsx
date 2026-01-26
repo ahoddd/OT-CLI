@@ -1,22 +1,42 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWallet, LedgerEntry } from '../../hooks/useWallet';
 import { TIER_COLORS } from '../../constants/MockData';
+import { useRouter } from 'expo-router';
 
 export default function WalletScreen() {
   const { balance, ledger } = useWallet();
+  const router = useRouter();
+
+  const handlePress = (item: LedgerEntry) => {
+    if (item.type === 'earn') {
+      router.push({
+        pathname: `/proof/${item.id}` as any,
+        params: {
+          amount: item.amount,
+          partner: 'OrbTap Partner', 
+          perk: item.title,
+          tier: item.tier,
+          date: new Date(item.timestamp).toLocaleDateString()
+        }
+      });
+    }
+  };
 
   const renderItem = ({ item }: { item: LedgerEntry }) => (
-    <View style={styles.row}>
+    <TouchableOpacity onPress={() => handlePress(item)} style={styles.row}>
       <View>
         <Text style={styles.rowTitle}>{item.title}</Text>
         <Text style={[styles.rowTier, { color: TIER_COLORS[item.tier] }]}>{item.tier.toUpperCase()}</Text>
       </View>
-      <Text style={[styles.amount, { color: item.type === 'earn' ? '#4ade80' : '#f87171' }]}>
-        {item.type === 'earn' ? '+' : '-'}{item.amount}
-      </Text>
-    </View>
+      <View style={styles.rightSide}>
+        <Text style={[styles.amount, { color: item.type === 'earn' ? '#4ade80' : '#f87171' }]}>
+            {item.type === 'earn' ? '+' : '-'}{item.amount}
+        </Text>
+        {item.type === 'earn' && <Text style={styles.viewProof}>VIEW PROOF ›</Text>}
+      </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -52,6 +72,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#111' },
   rowTitle: { color: '#fff', fontSize: 16, fontWeight: '500' },
   rowTier: { fontSize: 10, fontWeight: 'bold', marginTop: 4 },
+  rightSide: { alignItems: 'flex-end' },
   amount: { fontSize: 18, fontWeight: 'bold' },
+  viewProof: { color: '#666', fontSize: 10, marginTop: 4 },
   empty: { color: '#444', textAlign: 'center', marginTop: 40 },
 });

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Button, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Button } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWallet } from '../../hooks/useWallet';
-import { MOCK_PERKS } from '../../constants/MockData';
+import { MOCK_PARTNERS } from '../../constants/MockData';
 
 export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -26,18 +26,27 @@ export default function ScanScreen() {
     if (scanned) return;
     setScanned(true);
 
-    // MOCK VALIDATION: In real app, verify signature.
-    // Simulating a win:
-    const points = 50;
-    addTransaction(points, "Verified Scan Win", "rare", "earn");
+    const points = 150;
+    const partner = MOCK_PARTNERS[1]; 
+    const perkTitle = "Daily Check-in";
+    const tier = partner.tier;
+    const date = new Date().toLocaleDateString();
+
+    addTransaction(points, perkTitle, tier, "earn");
     
-    alert(`Scanned: ${data}\n+${points} OT Points!`);
-    
-    // Reset after delay or navigate
     setTimeout(() => {
+        router.push({
+            pathname: `/proof/${Date.now()}` as any,
+            params: {
+                amount: points,
+                partner: partner.name,
+                perk: perkTitle,
+                tier: tier,
+                date: date
+            }
+        });
         setScanned(false);
-        router.push('/(tabs)/wallet');
-    }, 1500);
+    }, 500);
   };
 
   return (
