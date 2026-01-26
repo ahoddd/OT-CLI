@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useFlags } from '../../components/FlagContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const { flags, loading } = useFlags();
@@ -13,8 +14,34 @@ export default function TabLayout() {
       tabBarActiveTintColor: '#fff',
       tabBarInactiveTintColor: '#666',
     }}>
-      <Tabs.Screen name="index" options={{ title: 'Map' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen 
+        name="index" 
+        options={{ 
+          title: 'Map',
+          tabBarIcon: ({ color }) => <Ionicons name="map" size={24} color={color} />
+        }} 
+      />
+      <Tabs.Screen 
+        name="scan" 
+        options={{ 
+          title: 'Scan',
+          tabBarIcon: ({ color }) => <Ionicons name="qr-code" size={24} color={color} />
+        }} 
+      />
+      <Tabs.Screen 
+        name="wallet" 
+        options={{ 
+          title: 'Wallet',
+          tabBarIcon: ({ color }) => <Ionicons name="wallet" size={24} color={color} />
+        }} 
+      />
+      <Tabs.Screen 
+        name="profile" 
+        options={{ 
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />
+        }} 
+      />
     </Tabs>
   );
 }

@@ -3,7 +3,26 @@
     "name": "OrbTap",
     "slug": "orbtap",
     "version": "1.0.0",
-    "scheme": "orbtap",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "OrbTap needs camera access to scan Partner QR codes."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      }
+    },
     "web": {
       "bundler": "metro",
       "output": "static",
@@ -11,6 +30,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow OrbTap to scan QR codes."
+        }
+      ],
       [
         "@rnmapbox/maps",
         {
