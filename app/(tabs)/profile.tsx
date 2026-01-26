@@ -18,16 +18,19 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         
         <View style={styles.header}>
-          <View style={styles.avatar}><Text style={styles.avatarText}>YOU</Text></View>
-          <View>
-            <Text style={styles.username}>Explorer One</Text>
-            <Text style={styles.stats}>{balance} Points • {followed.length} Following</Text>
+          <View style={styles.topRow}>
+             <View style={styles.userInfo}>
+                <View style={styles.avatar}><Text style={styles.avatarText}>YOU</Text></View>
+                <View>
+                    <Text style={styles.username}>Explorer One</Text>
+                    <Text style={styles.stats}>{balance} Points • {followed.length} Following</Text>
+                </View>
+             </View>
+             <TouchableOpacity style={styles.settingsBtn} onPress={() => router.push('/settings')}>
+                <Ionicons name="settings-sharp" size={24} color="#fff" />
+             </TouchableOpacity>
           </View>
         </View>
-
-        <TouchableOpacity style={styles.adminLink} onPress={() => router.push('/admin')}>
-          <Text style={styles.adminText}>⚙️ Admin Hub</Text>
-        </TouchableOpacity>
 
         <View style={styles.divider} />
 
@@ -85,13 +88,14 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   content: { padding: 20, paddingBottom: 100 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  header: { marginBottom: 20 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  userInfo: { flexDirection: 'row', alignItems: 'center' },
   avatar: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#333', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   avatarText: { color: '#888', fontWeight: 'bold' },
   username: { color: '#fff', fontSize: 24, fontWeight: 'bold' },
   stats: { color: '#888', marginTop: 4 },
-  adminLink: { backgroundColor: '#111', padding: 12, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 20 },
-  adminText: { color: '#666', fontWeight: 'bold', fontSize: 12 },
+  settingsBtn: { padding: 8, backgroundColor: '#111', borderRadius: 20 },
   divider: { height: 1, backgroundColor: '#222', marginVertical: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sectionTitle: { color: '#666', fontSize: 12, fontWeight: 'bold', letterSpacing: 1, marginBottom: 12 },
