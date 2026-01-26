@@ -8,7 +8,20 @@ export interface Partner {
   verified: boolean;
   lat: number;
   lon: number;
-  perkTitle: string;
+  description: string;
+  address: string;
+  hours: string;
+  // Computed/joined fields for UI convenience
+  perks?: Perk[];
+}
+
+export interface Perk {
+  id: string;
+  partnerId: string;
+  title: string;
+  description: string;
+  tier: Tier;
+  terms: string;
   cooldown: string;
 }
 
@@ -19,6 +32,13 @@ export const TIER_COLORS = {
   legendary: '#eab308', // Gold
 };
 
+export const MOCK_PERKS: Perk[] = [
+  { id: 'pk1', partnerId: 'p1', tier: 'common', title: 'Free Espresso Shot', description: 'Get a free single shot with any pastry purchase.', terms: 'One per day.', cooldown: '24h' },
+  { id: 'pk2', partnerId: 'p2', tier: 'rare', title: 'Day Pass Access', description: 'Full gym access including sauna.', terms: 'New members only.', cooldown: '7 days' },
+  { id: 'pk3', partnerId: 'p3', tier: 'apex', title: 'VIP Entry + Drink', description: 'Skip the line and get a house cocktail.', terms: 'Friday/Saturday only.', cooldown: '12h' },
+  { id: 'pk4', partnerId: 'p4', tier: 'legendary', title: 'Exclusive Reserve Item', description: 'Access to the hidden menu reserve item.', terms: 'Must show badge.', cooldown: '30 days' },
+];
+
 export const MOCK_PARTNERS: Partner[] = [
   {
     id: 'p1',
@@ -28,8 +48,9 @@ export const MOCK_PARTNERS: Partner[] = [
     verified: true,
     lat: 40.7128,
     lon: -74.0060,
-    perkTitle: 'Free Espresso Shot',
-    cooldown: '24h',
+    description: 'Artisanal coffee spot with a cozy vibe.',
+    address: '123 Main St, New York, NY',
+    hours: '7AM - 7PM',
   },
   {
     id: 'p2',
@@ -39,8 +60,9 @@ export const MOCK_PARTNERS: Partner[] = [
     verified: true,
     lat: 40.7138,
     lon: -74.0070,
-    perkTitle: 'Day Pass Access',
-    cooldown: '1 week',
+    description: 'High-energy fitness center.',
+    address: '456 Broadway, New York, NY',
+    hours: '24/7',
   },
   {
     id: 'p3',
@@ -50,8 +72,9 @@ export const MOCK_PARTNERS: Partner[] = [
     verified: false,
     lat: 40.7118,
     lon: -74.0050,
-    perkTitle: 'VIP Entry + Drink',
-    cooldown: '12h',
+    description: 'Exclusive underground lounge.',
+    address: '789 Bowery, New York, NY',
+    hours: '10PM - 4AM',
   },
   {
     id: 'p4',
@@ -61,7 +84,8 @@ export const MOCK_PARTNERS: Partner[] = [
     verified: true,
     lat: 40.7148,
     lon: -74.0040,
-    perkTitle: 'Exclusive Reserve Item',
-    cooldown: '30 days',
+    description: 'Members-only luxury goods.',
+    address: '101 5th Ave, New York, NY',
+    hours: 'By Appointment',
   },
 ];
