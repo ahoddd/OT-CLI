@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "OrbTap",
+    "slug": "orbtap",
+    "version": "1.0.0",
+    "scheme": "orbtap",
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
