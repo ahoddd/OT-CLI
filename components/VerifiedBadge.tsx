@@ -1,23 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View } from 'react-native';
+import { OrbTapShield } from './AppLogos';
+import { Ionicons } from '@expo/vector-icons';
 
+// We upgrade the standard checkmark to the OrbTap Shield for a premium feel
 export const VerifiedBadge = ({ size = 16 }: { size?: number }) => {
   return (
-    <View style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[styles.check, { fontSize: size * 0.6 }]}>✓</Text>
+    <View style={{ marginLeft: 4 }}>
+      <OrbTapShield size={size} />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  badge: {
-    backgroundColor: '#38bdf8', // Light blue
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 6,
-  },
-  check: {
-    color: '#000',
-    fontWeight: 'bold',
-  },
-});

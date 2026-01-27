@@ -1,26 +1,29 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_FLAGS, FeatureFlags, FlagKey } from '../constants/Flags';
 
-type FlagContextType = {
-  flags: FeatureFlags;
-  setFlag: (key: FlagKey, value: boolean) => void;
-  resetFlags: () => void;
-  loading: boolean;
-};
+type MapProvider = 'mapbox' | 'native' | 'none';
 
-const FlagContext = createContext<FlagContextType>({
-  flags: DEFAULT_FLAGS,
-  setFlag: () => {},
-  resetFlags: () => {},
-  loading: true,
-});
+interface Flags {
+  isMapboxEnabled: boolean;
+  mapProvider: MapProvider;
+  useMockLocation: boolean;
+}
 
-export const useFlags = () => useContext(FlagContext);
+interface FlagContextType {
+  flags: Flags;
+  setMapProvider: (provider: MapProvider) => void;
+  toggleMockLocation: () => void;
+}
 
-export const FlagProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [flags, setFlagsState] = useState<FeatureFlags>(DEFAULT_FLAGS);
-  const [loading, setLoading] = useState(true);
+const FlagContext = createContext<FlagContextType | undefined>(undefined);
+
+export const FlagProvider = ({ children }: { children: React.ReactNode }) => {
+  // DEFAULT TO 'native' (Apple Maps) TO AVOID CRASH
+  const [flags, setFlags] = useState<Flags>({
+    isMapboxEnabled: false,
+    mapProvider: 'native', 
+    useMockLocation: true,
+  });
 
   useEffect(() => {
     loadFlags();
@@ -28,39 +31,38 @@ export const FlagProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadFlags = async () => {
     try {
-      const stored = await AsyncStorage.getItem('ORBTAP_FLAGS');
-      if (stored) {
-        setFlagsState({ ...DEFAULT_FLAGS, ...JSON.parse(stored) });
+      const saved = await AsyncStorage.getItem('ORBTAP_FLAGS');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Force override if it was set to mapbox previously
+        if (parsed.mapProvider === 'mapbox') parsed.mapProvider = 'native';
+        setFlags(parsed);
       }
-    } catch (e) {
-      console.error('Failed to load flags', e);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.log(e); }
   };
 
-  const saveFlags = async (newFlags: FeatureFlags) => {
-    try {
-      await AsyncStorage.setItem('ORBTAP_FLAGS', JSON.stringify(newFlags));
-    } catch (e) {
-      console.error('Failed to save flags', e);
-    }
+  const saveFlags = async (newFlags: Flags) => {
+    setFlags(newFlags);
+    await AsyncStorage.setItem('ORBTAP_FLAGS', JSON.stringify(newFlags));
   };
 
-  const setFlag = (key: FlagKey, value: boolean) => {
-    const newFlags = { ...flags, [key]: value };
-    setFlagsState(newFlags);
-    saveFlags(newFlags);
+  const setMapProvider = (provider: MapProvider) => {
+    saveFlags({ ...flags, mapProvider: provider, isMapboxEnabled: provider === 'mapbox' });
   };
 
-  const resetFlags = () => {
-    setFlagsState(DEFAULT_FLAGS);
-    saveFlags(DEFAULT_FLAGS);
+  const toggleMockLocation = () => {
+    saveFlags({ ...flags, useMockLocation: !flags.useMockLocation });
   };
 
   return (
-    <FlagContext.Provider value={{ flags, setFlag, resetFlags, loading }}>
+    <FlagContext.Provider value={{ flags, setMapProvider, toggleMockLocation }}>
       {children}
     </FlagContext.Provider>
   );
+};
+
+export const useFlags = () => {
+  const context = useContext(FlagContext);
+  if (!context) throw new Error("useFlags must be used within FlagProvider");
+  return context;
 };

@@ -1,107 +1,149 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MOCK_PARTNERS, MOCK_PERKS, TIER_COLORS } from '../../constants/MockData';
 import { VerifiedBadge } from '../../components/VerifiedBadge';
+import { PartnerBadge } from '../../components/GamificationUI';
+import { TerritoryControl } from '../../components/TerritoryControl';
 import { Ionicons } from '@expo/vector-icons';
 import { useSocial } from '../../hooks/useSocial';
+import { useReviews } from '../../hooks/useReviews';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS } from '../../constants/Colors';
+import { useTheme } from '../../hooks/useTheme';
+import * as Haptics from 'expo-haptics';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+
+const { width } = Dimensions.get('window');
 
 export default function PartnerScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { isFollowing, toggleFollow } = useSocial();
+  const { getPartnerReviews } = useReviews();
+  const { colors, isDark } = useTheme();
   
   const partner = MOCK_PARTNERS.find(p => p.id === id);
   const perks = MOCK_PERKS.filter(p => p.partnerId === id);
+  const reviews = getPartnerReviews(partner?.id || '');
 
-  if (!partner) return <View style={styles.container}><Text style={styles.error}>Partner not found</Text></View>;
+  if (!partner) return <View style={styles.container}><Text>Error</Text></View>;
 
   const tierColor = TIER_COLORS[partner.tier];
   const following = isFollowing(partner.id);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.heroPlaceholder}>
-            <Text style={styles.heroInitial}>{partner.name[0]}</Text>
-          </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        
+        {/* BRAND HERO */}
+        <View style={styles.heroContainer}>
+            <LinearGradient
+                colors={[tierColor, isDark ? '#000' : '#fff']}
+                style={styles.heroGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+            >
+                <SafeAreaView edges={['top']} style={styles.safeHeader}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+                        <Ionicons name="arrow-back" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.iconBtn}>
+                        <Ionicons name="share-social" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </SafeAreaView>
+
+                <Animated.View entering={FadeInDown.duration(800)} style={styles.heroContent}>
+                    <View style={styles.badgeWrapper}>
+                         <PartnerBadge tier={partner.tier} size={40} />
+                    </View>
+                    <Text style={styles.heroText}>{partner.name.toUpperCase()}</Text>
+                    <View style={styles.tierPill}>
+                         <Text style={[styles.tierText, { color: tierColor }]}>{partner.tier.toUpperCase()} AUTHORITY</Text>
+                    </View>
+                </Animated.View>
+            </LinearGradient>
         </View>
 
-        <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <Text style={styles.name}>{partner.name}</Text>
-            {partner.verified && <VerifiedBadge size={20} />}
-          </View>
-          <Text style={[styles.tierBadge, { color: tierColor }]}>{partner.tier.toUpperCase()}</Text>
-          <Text style={styles.meta}>{partner.category} • {partner.address}</Text>
-          <Text style={styles.hours}>Open: {partner.hours}</Text>
-          
-          <Text style={styles.description}>{partner.description}</Text>
+        {/* CONTENT SHEET */}
+        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+            <View style={styles.infoRow}>
+                <View style={{flex: 1}}>
+                    <Text style={[styles.address, { color: colors.textSecondary }]}>{partner.address}</Text>
+                    <View style={styles.verifiedRow}>
+                        {partner.verified && <VerifiedBadge size={16} />}
+                        <Text style={[styles.verifiedText, { color: colors.text }]}>Verified Location</Text>
+                    </View>
+                </View>
+                <TouchableOpacity 
+                    style={[styles.followBtn, { backgroundColor: following ? colors.surface : colors.text }]}
+                    onPress={() => { Haptics.selectionAsync(); toggleFollow(partner.id); }}
+                >
+                    <Text style={[styles.followText, { color: following ? colors.text : colors.background }]}>
+                        {following ? 'Following' : 'Follow'}
+                    </Text>
+                </TouchableOpacity>
+            </View>
 
-          <View style={styles.actionRow}>
-            <TouchableOpacity 
-              style={[styles.actionBtn, { borderColor: tierColor, backgroundColor: following ? tierColor : 'transparent' }]}
-              onPress={() => toggleFollow(partner.id)}
-            >
-              <Text style={[styles.actionText, { color: following ? '#000' : tierColor }]}>
-                {following ? 'Following' : 'Follow'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.reportBtn} onPress={() => router.push('/report')}>
-              <Text style={styles.reportText}>Report</Text>
-            </TouchableOpacity>
-          </View>
+            {/* THE WAR COMPONENT */}
+            <TerritoryControl sphereName="Neon Raiders" />
 
-          <Text style={styles.sectionTitle}>Available Perks</Text>
-          {perks.map(perk => (
-            <TouchableOpacity 
-              key={perk.id} 
-              style={[styles.perkCard, { borderLeftColor: TIER_COLORS[perk.tier] }]}
-              onPress={() => router.push(`/perk/${perk.id}` as any)}
-            >
-              <Text style={styles.perkTitle}>{perk.title}</Text>
-              <Text style={styles.perkDesc}>{perk.description}</Text>
-              <View style={styles.perkFooter}>
-                <Text style={styles.cooldown}>Refreshes: {perk.cooldown}</Text>
-                <Text style={styles.arrow}>→</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ACTIVE MISSIONS</Text>
+            {perks.map((perk, i) => (
+                <Animated.View 
+                    key={perk.id} 
+                    entering={FadeInDown.delay(i*100).duration(500)}
+                    style={[styles.missionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                >
+                    <View style={[styles.missionLeft, { backgroundColor: TIER_COLORS[perk.tier] }]}>
+                        <Ionicons name="gift" size={24} color="#000" />
+                    </View>
+                    <View style={styles.missionCenter}>
+                        <Text style={[styles.missionTitle, { color: colors.text }]}>{perk.title}</Text>
+                        <Text style={[styles.missionDesc, { color: colors.textSecondary }]} numberOfLines={1}>{perk.description}</Text>
+                    </View>
+                    <TouchableOpacity style={[styles.claimBtn, { borderColor: colors.border }]}>
+                        <Text style={[styles.claimText, { color: colors.text }]}>CLAIM</Text>
+                    </TouchableOpacity>
+                </Animated.View>
+            ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  error: { color: '#f00', padding: 20 },
-  header: { height: 150, backgroundColor: '#111', position: 'relative' },
-  backBtn: { position: 'absolute', top: 20, left: 20, zIndex: 10, padding: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 20 },
-  heroPlaceholder: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#222' },
-  heroInitial: { fontSize: 80, color: '#333', fontWeight: 'bold' },
-  content: { padding: 20 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  name: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
-  tierBadge: { fontSize: 12, fontWeight: '900', letterSpacing: 1, marginBottom: 8 },
-  meta: { color: '#888', marginBottom: 4 },
-  hours: { color: '#aaa', fontStyle: 'italic', marginBottom: 16 },
-  description: { color: '#ccc', lineHeight: 22, marginBottom: 24 },
-  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 30 },
-  actionBtn: { flex: 1, padding: 12, borderWidth: 1, borderRadius: 8, alignItems: 'center' },
-  actionText: { fontWeight: 'bold' },
-  reportBtn: { padding: 12, alignItems: 'center' },
-  reportText: { color: '#666' },
-  sectionTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 16 },
-  perkCard: { backgroundColor: '#111', padding: 16, borderRadius: 8, marginBottom: 12, borderLeftWidth: 4 },
-  perkTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-  perkDesc: { color: '#888', fontSize: 14, marginBottom: 12 },
-  perkFooter: { flexDirection: 'row', justifyContent: 'space-between' },
-  cooldown: { color: '#555', fontSize: 12 },
-  arrow: { color: '#666' },
+  container: { flex: 1 },
+  heroContainer: { height: 350 },
+  heroGradient: { flex: 1, paddingBottom: 60, justifyContent: 'space-between' },
+  safeHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+  heroContent: { paddingHorizontal: 24, alignItems: 'center' },
+  badgeWrapper: { marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 20 },
+  heroText: { color: '#fff', fontSize: 32, fontWeight: '900', textAlign: 'center', letterSpacing: -1, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 10 },
+  tierPill: { marginTop: 12, backgroundColor: '#000', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  tierText: { fontWeight: 'bold', fontSize: 10, letterSpacing: 2 },
+  
+  sheet: { marginTop: -40, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: 500 },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  address: { fontSize: 14, marginBottom: 4 },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  verifiedText: { fontSize: 12, fontWeight: 'bold' },
+  followBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
+  followText: { fontWeight: 'bold', fontSize: 14 },
+  
+  divider: { height: 1, marginBottom: 24, marginTop: 24 },
+  sectionTitle: { fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 16 },
+  
+  missionCard: { flexDirection: 'row', borderRadius: 16, padding: 12, marginBottom: 12, alignItems: 'center', borderWidth: 1 },
+  missionLeft: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  missionCenter: { flex: 1, paddingHorizontal: 12 },
+  missionTitle: { fontWeight: 'bold', fontSize: 16 },
+  missionDesc: { fontSize: 12, marginTop: 2 },
+  claimBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  claimText: { fontWeight: '900', fontSize: 10, letterSpacing: 1 }
 });

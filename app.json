@@ -4,24 +4,29 @@
     "slug": "orbtap",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "icon": "./assets/images/icon.png",
+    "scheme": "orbtap",
+    "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.orbtap",
       "infoPlist": {
-        "NSCameraUsageDescription": "OrbTap needs camera access to scan Partner QR codes."
+        "NSCameraUsageDescription": "OrbTap needs camera access to scan partner QRs.",
+        "NSPhotoLibraryUsageDescription": "Allow access to upload your profile avatar.",
+        "NSLocationWhenInUseUsageDescription": "OrbTap needs your location to show nearby drops."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
-      }
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.anonymous.orbtap"
     },
     "web": {
       "bundler": "metro",
@@ -33,21 +38,18 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow OrbTap to scan QR codes."
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
         }
       ],
       [
-        "@rnmapbox/maps",
+        "expo-image-picker",
         {
-          "RNMapboxMapsImpl": "mapbox",
-          "RNMapboxMapsDownloadToken": "sk.public.test"
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos."
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "scheme": "orbtap",
-    "newArchEnabled": false
+    }
   }
 }

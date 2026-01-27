@@ -1,72 +1,71 @@
 import { Tabs } from 'expo-router';
-import { useFlags } from '../../components/FlagContext';
 import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { Platform, StyleSheet, View } from 'react-native';
+import { COLORS } from '../../constants/Colors';
+import { useTheme } from '../../hooks/useTheme';
+import { TabBarOrb } from '../../components/TabBarOrb';
 
 export default function TabLayout() {
-  const { loading } = useFlags();
-
-  if (loading) return null;
+  const { colors, isDark } = useTheme();
 
   return (
-    <Tabs screenOptions={{
-      headerShown: false,
-      tabBarStyle: { backgroundColor: '#000', borderTopColor: '#333', height: 90, paddingTop: 10 },
-      tabBarActiveTintColor: '#fff',
-      tabBarInactiveTintColor: '#666',
-      tabBarLabelStyle: { fontSize: 10, marginTop: 4 },
-    }}>
-      <Tabs.Screen 
-        name="index" 
-        options={{ 
-          title: 'Map',
-          tabBarIcon: ({ color }: { color: string }) => <Ionicons name="map" size={24} color={color} />
-        }} 
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: Platform.OS === 'ios' ? 85 : 65,
+          backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)',
+          borderTopWidth: 0,
+          elevation: 0,
+        },
+        tabBarBackground: () => (
+          <BlurView 
+            tint={isDark ? "dark" : "light"} 
+            intensity={80} 
+            style={StyleSheet.absoluteFill} 
+          />
+        ),
+        tabBarActiveTintColor: COLORS.neonBlue[0],
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarShowLabel: false,
+      }}>
+      <Tabs.Screen
+        name="index"
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="map" size={24} color={color} />,
+        }}
       />
-      <Tabs.Screen 
-        name="scan" 
-        options={{ 
-          title: 'Scan',
-          tabBarIcon: ({ color }: { color: string }) => <Ionicons name="qr-code" size={24} color={color} />
-        }} 
+      <Tabs.Screen
+        name="scan"
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="qr-code" size={24} color={color} />,
+        }}
       />
       
-      {/* CENTRAL ORB TAB */}
-      <Tabs.Screen 
-        name="orb" 
-        options={{ 
-          title: '',
-          tabBarIcon: ({ focused }: { focused: boolean }) => (
-            <View style={{ 
-              width: 56, 
-              height: 56, 
-              borderRadius: 28, 
-              backgroundColor: focused ? '#fbbf24' : '#333',
-              justifyContent: 'center', 
-              alignItems: 'center',
-              marginBottom: 20,
-              borderWidth: 4,
-              borderColor: '#000'
-            }}>
-              <Ionicons name="flash" size={28} color={focused ? '#000' : '#666'} />
-            </View>
-          )
-        }} 
+      {/* THE PULSING ORB */}
+      <Tabs.Screen
+        name="orb"
+        options={{
+          tabBarButton: () => <TabBarOrb />,
+        }}
       />
 
-      <Tabs.Screen 
-        name="wallet" 
-        options={{ 
-          title: 'Wallet',
-          tabBarIcon: ({ color }: { color: string }) => <Ionicons name="wallet" size={24} color={color} />
-        }} 
+      <Tabs.Screen
+        name="wallet"
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="wallet" size={24} color={color} />,
+        }}
       />
-      <Tabs.Screen 
-        name="profile" 
-        options={{ 
-          title: 'Profile',
-          tabBarIcon: ({ color }: { color: string }) => <Ionicons name="person" size={24} color={color} />
-        }} 
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={24} color={color} />,
+        }}
       />
     </Tabs>
   );

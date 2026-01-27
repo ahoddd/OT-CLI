@@ -1,78 +1,106 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Button } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
+import { CameraView, Camera } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScannerHUD } from '../../components/ScannerHUD';
+import { COLORS } from '../../constants/Colors';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useWallet } from '../../hooks/useWallet';
-import { MOCK_PARTNERS } from '../../constants/MockData';
+import { useTheme } from '../../hooks/useTheme';
 
 export default function ScanScreen() {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanned, setScanned] = useState(false);
   const router = useRouter();
   const { addTransaction } = useWallet();
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
+  const { colors } = useTheme();
 
-  if (!permission) return <View />;
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>We need your permission to scan QR codes.</Text>
-        <Button onPress={requestPermission} title="Grant Permission" />
-      </View>
-    );
-  }
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
 
-  const handleBarCodeScanned = ({ data }: { data: string }) => {
-    if (scanned) return;
+  const handleBarCodeScanned = ({ type, data }: any) => {
     setScanned(true);
+    processScan(data);
+  };
 
-    const points = 150;
-    const partner = MOCK_PARTNERS[1]; 
-    const perkTitle = "Daily Check-in";
-    const tier = partner.tier;
-    const date = new Date().toLocaleDateString();
-
-    addTransaction(points, perkTitle, tier, "earn");
+  const processScan = async (data: string) => {
+    // In production, verify the hash/data with backend
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
+    // Simulate API delay
     setTimeout(() => {
-        router.push({
-            pathname: `/proof/${Date.now()}` as any,
-            params: {
-                amount: points,
-                partner: partner.name,
-                perk: perkTitle,
-                tier: tier,
-                date: date
-            }
-        });
-        setScanned(false);
+      // Award Points
+      addTransaction(500, "Verified Visit: CyberCafe");
+      
+      // Navigate to Proof Card
+      router.push({
+        pathname: "/proof/[id]",
+        params: { 
+            id: "proof_123", 
+            partner: "CyberCafe 2077",
+            points: "500",
+            tier: "APEX"
+        }
+      });
+      setScanned(false);
     }, 500);
   };
 
+  // SIMULATION MODE (For Simulator Testing)
+  const simulateScan = () => {
+    handleBarCodeScanned({ type: 'qr', data: 'orbtap://redeem/p1' });
+  };
+
+  if (hasPermission === null) {
+    return <View style={styles.container}><Text>Requesting permission...</Text></View>;
+  }
+  if (hasPermission === false) {
+    return <View style={styles.container}><Text>No access to camera</Text></View>;
+  }
+
   return (
     <View style={styles.container}>
+      {/* CAMERA LAYER */}
       <CameraView
         style={StyleSheet.absoluteFillObject}
-        facing="back"
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         barcodeScannerSettings={{
-            barcodeTypes: ["qr"],
+          barcodeTypes: ["qr"],
         }}
       />
-      <SafeAreaView style={styles.overlay}>
-        <Text style={styles.title}>Scan to Redeem</Text>
-        <View style={styles.reticle} />
-        <Text style={styles.hint}>Align QR code within frame</Text>
-      </SafeAreaView>
+      
+      {/* HUD LAYER */}
+      <ScannerHUD />
+
+      {/* DEBUG BUTTON (Only visible in dev/sim) */}
+      <TouchableOpacity style={styles.simBtn} onPress={simulateScan}>
+        <Ionicons name="bug" size={24} color="#000" />
+        <Text style={styles.simText}>SIMULATE SCAN</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
-  text: { color: '#fff', textAlign: 'center' },
-  overlay: { flex: 1, alignItems: 'center', width: '100%', justifyContent: 'space-between', paddingVertical: 50 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff', textShadowColor: '#000', textShadowRadius: 10 },
-  reticle: { width: 250, height: 250, borderWidth: 2, borderColor: '#4ade80', borderRadius: 20 },
-  hint: { color: '#fff', backgroundColor: 'rgba(0,0,0,0.5)', padding: 10, borderRadius: 8, overflow: 'hidden' },
+  container: { flex: 1, backgroundColor: '#000' },
+  simBtn: {
+    position: 'absolute',
+    bottom: 180,
+    alignSelf: 'center',
+    backgroundColor: COLORS.gold[0],
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 2,
+    borderColor: '#fff'
+  },
+  simText: { fontWeight: '900', fontSize: 12 }
 });

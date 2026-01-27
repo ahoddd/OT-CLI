@@ -1,76 +1,129 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useStreak } from '../../hooks/useStreak';
-import { StreakOrb } from '../../components/StreakOrb';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../../constants/Colors';
+import { useTheme } from '../../hooks/useTheme';
+import { DailyFactCard } from '../../components/DailyFactCard';
+import { DailyStreakOrb } from '../../components/DailyStreakOrb';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 
-export default function OrbScreen() {
-  const { streak, checkIn, canCheckIn } = useStreak();
+export default function OrbHubScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
-  const handleTap = () => {
-    if (canCheckIn) {
-      checkIn();
-    }
+  const handleNav = (route: string) => {
+    Haptics.selectionAsync();
+    router.push(route as any);
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>THE PULSE</Text>
-        <Text style={styles.subtitle}>Daily Sync</Text>
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            
+            {/* HEADER */}
+            <View style={styles.header}>
+                <Text style={[styles.welcome, { color: colors.textSecondary }]}>WELCOME BACK</Text>
+                <Text style={[styles.title, { color: colors.text }]}>COMMAND CENTER</Text>
+            </View>
 
-      <View style={styles.orbContainer}>
-        <StreakOrb 
-          active={canCheckIn} 
-          streakCount={canCheckIn ? streak.currentStreak : streak.currentStreak} 
-          onTap={handleTap} 
-        />
-        <Text style={styles.status}>
-          {canCheckIn ? "TAP TO SYNC" : "PULSE ACTIVE • SEE YOU TOMORROW"}
-        </Text>
-      </View>
+            {/* THE DAILY RITUAL (Streak Orb) */}
+            <DailyStreakOrb />
 
-      <View style={styles.grid}>
-        <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.card} onPress={() => router.push('/orbsignal' as any)}>
-            <Ionicons name="trending-up" size={32} color="#f472b6" />
-            <Text style={styles.cardText}>Signal</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => router.push('/(tabs)/wallet')}>
-            <Ionicons name="wallet" size={32} color="#60a5fa" />
-            <Text style={styles.cardText}>Wallet</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.card} onPress={() => router.push('/spheres' as any)}>
-            <Ionicons name="people" size={32} color="#a78bfa" />
-            <Text style={styles.cardText}>Spheres</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => router.push('/(tabs)')}>
-            <Ionicons name="map" size={32} color="#fbbf24" />
-            <Text style={styles.cardText}>Map</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </SafeAreaView>
+            {/* QUICK ACTIONS GRID */}
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>QUICK ACTIONS</Text>
+            <View style={styles.grid}>
+                <TouchableOpacity 
+                    style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => handleNav('/vote')}
+                >
+                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(96, 165, 250, 0.1)' }]}>
+                        <Ionicons name="stats-chart" size={24} color={COLORS.neonBlue[0]} />
+                    </View>
+                    <Text style={[styles.gridLabel, { color: colors.text }]}>OrbVote</Text>
+                    <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Earn XP</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => handleNav('/leaderboard')}
+                >
+                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(251, 191, 36, 0.1)' }]}>
+                        <Ionicons name="trophy" size={24} color={COLORS.gold[0]} />
+                    </View>
+                    <Text style={[styles.gridLabel, { color: colors.text }]}>Legends</Text>
+                    <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Rankings</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => router.push('/(tabs)/scan')}
+                >
+                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(74, 222, 128, 0.1)' }]}>
+                        <Ionicons name="qr-code" size={24} color={COLORS.success} />
+                    </View>
+                    <Text style={[styles.gridLabel, { color: colors.text }]}>Scan</Text>
+                    <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Redeem</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => router.push('/(tabs)/wallet')}
+                >
+                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                        <Ionicons name="wallet" size={24} color={COLORS.danger} />
+                    </View>
+                    <Text style={[styles.gridLabel, { color: colors.text }]}>Vault</Text>
+                    <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Assets</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* DAILY FACT */}
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>KNOWLEDGE BASE</Text>
+            <DailyFactCard />
+
+            {/* UPCOMING FEATURE TEASER */}
+            <View style={[styles.teaser, { borderColor: colors.border }]}>
+                <LinearGradient
+                    colors={[COLORS.neonBlue[0], COLORS.neonBlue[1]]}
+                    style={styles.teaserGrad}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                >
+                    <Ionicons name="planet" size={24} color="#fff" />
+                    <View>
+                        <Text style={styles.teaserTitle}>SPHERES v2.0</Text>
+                        <Text style={styles.teaserSub}>Team battles coming soon.</Text>
+                    </View>
+                </LinearGradient>
+            </View>
+
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  header: { alignItems: 'center', paddingVertical: 20 },
-  title: { color: '#fff', fontSize: 28, fontWeight: '900', letterSpacing: 2, textShadowColor: '#f472b6', textShadowRadius: 10 },
-  subtitle: { color: '#888', fontSize: 12, marginTop: 4, letterSpacing: 4, textTransform: 'uppercase' },
-  orbContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  status: { color: '#888', marginTop: 30, fontSize: 10, letterSpacing: 2, fontWeight: 'bold' },
-  grid: { padding: 20, paddingBottom: 40 },
-  sectionTitle: { color: '#444', fontSize: 12, fontWeight: 'bold', marginBottom: 16 },
-  row: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  card: { flex: 1, backgroundColor: '#111', padding: 20, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#222' },
-  cardText: { color: '#fff', marginTop: 8, fontWeight: 'bold' },
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+  content: { padding: 20, paddingBottom: 100 },
+  header: { marginBottom: 10 },
+  welcome: { fontSize: 10, fontWeight: 'bold', letterSpacing: 2, marginBottom: 4 },
+  title: { fontSize: 28, fontWeight: '900', letterSpacing: -1 },
+  
+  sectionTitle: { fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 12, marginTop: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  gridItem: { width: '48%', padding: 16, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
+  iconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  gridLabel: { fontSize: 14, fontWeight: 'bold', marginBottom: 2 },
+  gridSub: { fontSize: 10 },
+
+  teaser: { marginTop: 24, borderRadius: 16, overflow: 'hidden', borderWidth: 1 },
+  teaserGrad: { padding: 20, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  teaserTitle: { color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 1 },
+  teaserSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: 'bold' }
 });

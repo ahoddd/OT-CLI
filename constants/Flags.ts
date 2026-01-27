@@ -1,5 +1,5 @@
 export const DEFAULT_FLAGS = {
-  isMapboxEnabled: false,
+  isMapboxEnabled: true, // MUST BE TRUE
   isFirestoreLiveEnabled: false,
   isRedemptionEnabled: true,
   isShareEnabled: true,
