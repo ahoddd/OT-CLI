@@ -89,7 +89,7 @@ export const NavOrb = ({ focused, onPress }: NavOrbProps) => {
       <Animated.View style={[styles.orbWrapper, animatedOrbStyle]}>
         <LinearGradient
           // Explicitly cast the fallback array to [string, string] to match the prop type
-          colors={focused ? COLORS.gold : ['#333', '#111'] as [string, string]}
+          colors={focused ? (COLORS.gold as any) : ['#333', '#111']}
           style={styles.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: COLORS.glow,
+    backgroundColor: COLORS.neonBlue[0],
     zIndex: -1,
   }
 });

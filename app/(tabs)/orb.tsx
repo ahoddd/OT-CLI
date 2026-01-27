@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import MasterDirectory from '../../components/MasterDirectory';
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +13,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 export default function OrbHubScreen() {
+  const [dirVisible, setDirVisible] = useState(false);
+
   const router = useRouter();
   const { colors, isDark } = useTheme();
 
@@ -21,6 +25,17 @@ export default function OrbHubScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Master Directory Overlay */}
+      <MasterDirectory visible={dirVisible} onClose={() => setDirVisible(false)} />
+      
+      {/* Temp Trigger Button */}
+      <TouchableOpacity 
+        onPress={() => setDirVisible(true)}
+        style={{ position: 'absolute', top: 60, right: 20, zIndex: 9999, backgroundColor: '#222', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#444' }}
+      >
+        <Text style={{ color: '#fff', fontWeight: 'bold' }}>MENU</Text>
+      </TouchableOpacity>
+
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             

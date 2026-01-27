@@ -71,7 +71,7 @@ export default function LegalPage() {
                     <Text style={{fontWeight:'bold'}}>Q: How do I reset my password?</Text>{"\n"}
                     A: Go to the login screen and tap "Forgot Password".{"\n\n"}
                     <Text style={{fontWeight:'bold'}}>Q: How do I delete my account?</Text>{"\n"}
-                    A: Navigate to Settings > Danger Zone > Disconnect.
+                    A: Navigate to Settings &gt; Danger Zone &gt; Disconnect.
                 </Text>
             </View>
             <View style={styles.section}>

@@ -1,4 +1,4 @@
-import { TintColor } from './Colors';
+
 
 const neonBlue = ['#60a5fa', '#3b82f6'];
 const gold = ['#fbbf24', '#d97706'];

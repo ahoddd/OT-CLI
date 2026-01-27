@@ -87,7 +87,7 @@ export default function LeaderboardScreen() {
       />
 
       <FlatList
-        data={getData()}
+        data={getData() as any}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item, index }) => (

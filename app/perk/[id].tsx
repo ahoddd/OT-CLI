@@ -37,7 +37,7 @@ export default function PerkScreen() {
           
           <View style={styles.infoBox}>
             <Text style={styles.infoLabel}>TERMS & CONDITIONS</Text>
-            <Text style={styles.infoText}>{perk.terms}</Text>
+            <Text style={styles.infoText}>{(perk as any).terms || (perk as any).termsShort || 'No terms available'}</Text>
           </View>
 
           <View style={styles.infoBox}>

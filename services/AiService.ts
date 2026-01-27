@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // THIS IS A STUB FOR THE FUTURE AI INTEGRATION
 // You will plug your Gemini API Key here later.

@@ -55,7 +55,7 @@ export default function SettingsScreen() {
         </View>
         {isSwitch && (
             <Switch 
-                value={prefs[switchKey]} 
+                value={(prefs as any)[switchKey]} 
                 onValueChange={() => { Haptics.selectionAsync(); togglePref(switchKey); }} 
                 trackColor={{ false: '#333', true: COLORS.neonBlue[0] }}
             />

@@ -105,7 +105,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   background: { position: 'absolute', width: '100%', height: '100%' },
-  orbGlow: { position: 'absolute', top: -100, width: width, height: width, borderRadius: width/2, backgroundColor: COLORS.neonBlue[0], opacity: 0.2, blurRadius: 50 },
+  orbGlow: { position: 'absolute', top: -100, width: width, height: width, borderRadius: width/2, backgroundColor: COLORS.neonBlue[0], opacity: 0.2 },
   
   content: { flex: 1, justifyContent: 'center', padding: 24 },
   

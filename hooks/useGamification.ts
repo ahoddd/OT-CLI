@@ -19,7 +19,7 @@ const RANKS = [
 export const useGamification = () => {
   // Mock data for MVP - in real app this comes from Firebase
   const [xp, setXp] = useState(1250); 
-  const [rank, setRank] = useState<UserRank>(RANKS[0]);
+  const [rank, setRank] = useState<UserRank>({ ...RANKS[0], xp: 0, nextLevelXp: 100 });
 
   useEffect(() => {
     calculateRank();

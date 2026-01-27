@@ -41,7 +41,7 @@ export default function ProfileScreen() {
         onClose={() => setEditVisible(false)}
         currentName={displayName}
         currentBio={bio}
-        currentImage={avatar}
+        currentImage={avatar || undefined}
         onSave={(n, b, img) => { setDisplayName(n); setBio(b); if(img) setAvatar(img); }}
       />
 

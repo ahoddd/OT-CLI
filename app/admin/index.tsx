@@ -6,7 +6,7 @@ import { FlagKey } from '../../constants/Flags';
 import { useRouter } from 'expo-router';
 
 export default function AdminHub() {
-  const { flags, setFlag, resetFlags } = useFlags();
+  const { flags, setFlag, resetFlags } = useFlags() as any;
   const router = useRouter();
   const keys = Object.keys(flags) as FlagKey[];
 
@@ -25,7 +25,7 @@ export default function AdminHub() {
             <View key={key} style={styles.row}>
               <Text style={styles.label}>{key}</Text>
               <Switch
-                value={flags[key]}
+                value={flags[key as keyof typeof flags]}
                 onValueChange={(val) => setFlag(key, val)}
                 trackColor={{ false: '#333', true: '#4ade80' }}
               />
