@@ -24,54 +24,12 @@ type DirectoryItem = {
 };
 
 const DIRECTORY_ITEMS: DirectoryItem[] = [
-  { 
-    id: 'orb', 
-    label: 'The Orb', 
-    icon: 'planet', 
-    route: '/', 
-    description: 'Return to the core tapping experience.',
-    color: '#60A5FA' 
-  },
-  {
-    id: 'orbsignal',
-    label: 'Orb Signal',
-    icon: 'radio',
-    route: '/orbsignal',
-    description: 'Broadcast your status to the network.',
-    color: '#EF4444'
-  },
-  { 
-    id: 'upgrades', 
-    label: 'Upgrades', 
-    icon: 'flash', 
-    route: '/upgrades', 
-    description: 'Boost your tapping power.',
-    color: '#FBBF24'
-  },
-  { 
-    id: 'inventory', 
-    label: 'Artifacts', 
-    icon: 'cube', 
-    route: '/inventory', 
-    description: 'View collected items and skins.',
-    color: '#A78BFA'
-  },
-  { 
-    id: 'stats', 
-    label: 'Statistics', 
-    icon: 'stats-chart', 
-    route: '/stats', 
-    description: 'Deep dive into your progress metrics.',
-    color: '#34D399'
-  },
-  { 
-    id: 'settings', 
-    label: 'System', 
-    icon: 'settings-sharp', 
-    route: '/settings', 
-    description: 'App preferences.',
-    color: '#9CA3AF'
-  }
+  { id: 'orb', label: 'The Orb', icon: 'planet', route: '/(tabs)/orb', description: 'Return to the core tapping experience.', color: '#60A5FA' },
+  { id: 'map', label: 'Tactical Map', icon: 'map', route: '/(tabs)/map', description: 'Find nearby drops and allies.', color: '#34D399' },
+  { id: 'wallet', label: 'Wallet', icon: 'wallet', route: '/(tabs)/wallet', description: 'Manage your assets and points.', color: '#FBBF24' },
+  { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy', route: '/leaderboard', description: 'Global rankings.', color: '#A78BFA' },
+  { id: 'orbsignal', label: 'Orb Signal', icon: 'radio', route: '/orbsignal', description: 'Broadcast status to the network.', color: '#EF4444' },
+  { id: 'settings', label: 'System', icon: 'settings-sharp', route: '/settings', description: 'App preferences.', color: '#9CA3AF' }
 ];
 
 interface MasterDirectoryProps {

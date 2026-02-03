@@ -18,7 +18,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "OrbTap needs camera access to scan partner QRs.",
         "NSPhotoLibraryUsageDescription": "Allow access to upload your profile avatar.",
-        "NSLocationWhenInUseUsageDescription": "OrbTap needs your location to show nearby drops."
+        "NSLocationWhenInUseUsageDescription": "OrbTap needs your location to find nearby drops."
       }
     },
     "android": {
@@ -45,6 +45,13 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos."
+        }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsImpl": "mapbox",
+          "RNMapboxDownloadToken": "sk.eyJ1IjoiYW1vdXN0YWZhIiwiYSI6ImNta3ZoeGx3aDA2Z3ozZ3B1ZTd0YmE0a2oifQ.B7l4TwOCsjHFF8125-s2Ug"
         }
       ]
     ],
