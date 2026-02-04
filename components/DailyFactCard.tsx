@@ -1,101 +1,167 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Daily Intel card — uses Knowledge context. New fact/quote on app open; Like, Dislike, Share, Save.
+ */
+
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/Colors';
+import { ORBTAP_KNOWLEDGE_SHARE_SUFFIX } from '../constants/AppLinks';
 import { useTheme } from '../hooks/useTheme';
-import { FUN_FACTS } from '../constants/FunFacts';
+import { useKnowledge } from '../context/KnowledgeContext';
 import * as Haptics from 'expo-haptics';
-import Animated, { FadeIn, ZoomIn, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
-export const DailyFactCard = () => {
+export function DailyFactCard() {
+  const router = useRouter();
   const { colors, isDark } = useTheme();
-  const [factIndex, setFactIndex] = useState(0);
-  const [vote, setVote] = useState<'up' | 'down' | null>(null);
-  
-  // Animation for the refresh
-  const scale = useSharedValue(1);
+  const {
+    currentItem,
+    loading,
+    ensureFreshOnAppOpen,
+    like,
+    dislike,
+    vote,
+    share,
+    save,
+    unsave,
+    isSaved,
+    next,
+  } = useKnowledge();
+  const flip = useSharedValue(0);
 
-  const getRandomFact = () => {
+  React.useEffect(() => {
+    ensureFreshOnAppOpen();
+  }, [ensureFreshOnAppOpen]);
+
+  const advanceToNext = useCallback(async () => {
     Haptics.selectionAsync();
-    scale.value = withSpring(0.9, {}, () => {
-        scale.value = withSpring(1);
-    });
-    
-    let newIndex;
-    do {
-      newIndex = Math.floor(Math.random() * FUN_FACTS.length);
-    } while (newIndex === factIndex);
-    
-    setFactIndex(newIndex);
-    setVote(null); // Reset vote
-  };
+    flip.value = withSpring(1, { damping: 12 }, () => { flip.value = 0; });
+    await next();
+  }, [next, flip]);
 
-  const handleVote = (type: 'up' | 'down') => {
+  const handleShare = useCallback(async () => {
+    if (!currentItem) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setVote(type);
-  };
-
-  const handleShare = async () => {
+    const authorLine = currentItem.author ? ` — ${currentItem.author}` : '';
+    const message = currentItem.type === 'quote'
+      ? `"${currentItem.text}"${authorLine}${ORBTAP_KNOWLEDGE_SHARE_SUFFIX}`
+      : `Did you know? ${currentItem.text}${ORBTAP_KNOWLEDGE_SHARE_SUFFIX}`;
     try {
-      await Share.share({ message: `Did you know? ${FUN_FACTS[factIndex]} - via OrbTap` });
-    } catch (e) { console.log(e); }
-  };
+      await Share.share({ message, title: currentItem.type === 'quote' ? 'Quote' : 'Fun fact' });
+    } catch {}
+  }, [currentItem]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }]
+    transform: [{ scale: 1 + (flip.value * 0.02) }],
   }));
+
+  if (loading && !currentItem) {
+    return (
+      <View style={[styles.skeleton, { borderColor: colors.border }]}>
+        <Text style={[styles.skeletonText, { color: colors.textSecondary }]}>Loading intel…</Text>
+      </View>
+    );
+  }
+
+  if (!currentItem) {
+    return (
+      <TouchableOpacity
+        style={[styles.container, styles.card, { borderColor: colors.border }]}
+        onPress={() => router.push('/knowledge' as any)}
+      >
+        <Text style={[styles.factText, { color: colors.text }]}>Tap for more facts & quotes</Text>
+        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+      </TouchableOpacity>
+    );
+  }
+
+  const isQuote = currentItem.type === 'quote';
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
       <LinearGradient
-        colors={isDark ? ['#1a1a1a', '#000'] : ['#fff', '#f0f0f5']}
+        colors={isDark ? ['#1a1a1a', '#0d0d0d'] : ['#fafafa', '#f0f0f5']}
         style={[styles.card, { borderColor: colors.border }]}
       >
         <View style={styles.header}>
-            <View style={styles.badge}>
-                <Ionicons name="bulb" size={14} color={COLORS.gold[0]} />
-                <Text style={styles.badgeText}>DAILY INTEL</Text>
-            </View>
-            <TouchableOpacity onPress={handleShare}>
-                <Ionicons name="share-outline" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
+          <View style={[styles.badge, { backgroundColor: isQuote ? COLORS.gold[0] + '22' : COLORS.neonBlue[0] + '22' }]}>
+            <Ionicons name={isQuote ? 'chatbox-ellipses' : 'bulb'} size={12} color={isQuote ? COLORS.gold[0] : COLORS.neonBlue[0]} />
+            <Text style={[styles.badgeText, { color: isQuote ? COLORS.gold[0] : COLORS.neonBlue[0] }]}>
+              {isQuote ? 'QUOTE' : 'DAILY INTEL'}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/knowledge' as any)} hitSlop={8}>
+            <Text style={[styles.seeAllText, { color: colors.textSecondary }]}>See all</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} hitSlop={8}>
+            <Ionicons name="share-outline" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         <Text style={[styles.factText, { color: colors.text }]}>
-            "{FUN_FACTS[factIndex]}"
+          {isQuote ? `"${currentItem.text}"` : currentItem.text}
         </Text>
+        {currentItem.author && (
+          <Text style={[styles.author, { color: colors.textSecondary }]}>— {currentItem.author}</Text>
+        )}
 
         <View style={styles.footer}>
-            <View style={styles.voteRow}>
-                <TouchableOpacity onPress={() => handleVote('up')} style={styles.voteBtn}>
-                    <Ionicons name={vote === 'up' ? "thumbs-up" : "thumbs-up-outline"} size={20} color={vote === 'up' ? COLORS.success : colors.textSecondary} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleVote('down')} style={styles.voteBtn}>
-                    <Ionicons name={vote === 'down' ? "thumbs-down" : "thumbs-down-outline"} size={20} color={vote === 'down' ? COLORS.danger : colors.textSecondary} />
-                </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={[styles.nextBtn, { borderColor: colors.border }]} onPress={getRandomFact}>
-                <Text style={[styles.nextText, { color: colors.text }]}>NEXT SIGNAL</Text>
-                <Ionicons name="refresh" size={14} color={colors.text} />
+          <View style={styles.voteRow}>
+            <TouchableOpacity onPress={like} style={styles.voteBtn}>
+              <Ionicons name={vote === 'like' ? 'thumbs-up' : 'thumbs-up-outline'} size={18} color={vote === 'like' ? COLORS.success : colors.textSecondary} />
             </TouchableOpacity>
+            <TouchableOpacity onPress={dislike} style={styles.voteBtn}>
+              <Ionicons name={vote === 'dislike' ? 'thumbs-down' : 'thumbs-down-outline'} size={18} color={vote === 'dislike' ? COLORS.danger : colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => (isSaved(currentItem.id) ? unsave(currentItem.id) : save(currentItem))}
+              style={styles.voteBtn}
+            >
+              <Ionicons name={isSaved(currentItem.id) ? 'bookmark' : 'bookmark-outline'} size={18} color={isSaved(currentItem.id) ? COLORS.gold[0] : colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={[styles.nextBtn, { borderColor: colors.border }]} onPress={advanceToNext}>
+            <Text style={[styles.nextText, { color: colors.text }]}>NEXT</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.text} />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
     </Animated.View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { marginBottom: 20 },
-  card: { borderRadius: 20, padding: 20, borderWidth: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(251, 191, 36, 0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.3)' },
-  badgeText: { fontSize: 10, fontWeight: 'bold', color: COLORS.gold[0], letterSpacing: 1 },
-  factText: { fontSize: 18, fontWeight: 'bold', lineHeight: 26, marginBottom: 20, fontStyle: 'italic' },
+  container: { marginBottom: 16 },
+  skeleton: {
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    minHeight: 100,
+    justifyContent: 'center',
+  },
+  skeletonText: { fontSize: 14 },
+  card: { borderRadius: 16, padding: 14, borderWidth: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.25)',
+  },
+  badgeText: { fontSize: 9, fontWeight: 'bold', letterSpacing: 0.8 },
+  seeAllText: { fontSize: 11, fontWeight: '600', flex: 1 },
+  factText: { fontSize: 15, fontWeight: '600', lineHeight: 22, marginBottom: 8, fontStyle: 'italic' },
+  author: { fontSize: 12, marginBottom: 12 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  voteRow: { flexDirection: 'row', gap: 16 },
+  voteRow: { flexDirection: 'row', gap: 12 },
   voteBtn: { padding: 4 },
-  nextBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
-  nextText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 }
+  nextBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
+  nextText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 });

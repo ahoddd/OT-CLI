@@ -22,7 +22,7 @@ export const PollCard = ({ poll }: PollCardProps) => {
     setVoted(index);
     
     // AWARD POINTS FOR VOTING
-    addTransaction(5, `Voted: ${poll.partnerName} Poll`);
+    addTransaction({ type: 'earn', amount: 5, reason: `Voted: ${poll.partnerName} Poll` });
   };
 
   const isSponsored = poll.type === 'sponsored';

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import MasterDirectory from '../../components/MasterDirectory';
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,8 @@ import { COLORS } from '../../constants/Colors';
 import { useTheme } from '../../hooks/useTheme';
 import { DailyFactCard } from '../../components/DailyFactCard';
 import { DailyStreakOrb } from '../../components/DailyStreakOrb';
+import { FeaturedPartnerCard } from '../../components/FeaturedPartnerCard';
+import { getFeaturedPartner } from '../../constants/MockData';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
@@ -17,6 +19,7 @@ export default function OrbHubScreen() {
 
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const featuredPartner = getFeaturedPartner();
 
   const handleNav = (route: string) => {
     Haptics.selectionAsync();
@@ -41,16 +44,38 @@ export default function OrbHubScreen() {
             
             {/* HEADER */}
             <View style={styles.header}>
-                <Text style={[styles.welcome, { color: colors.textSecondary }]}>WELCOME BACK</Text>
-                <Text style={[styles.title, { color: colors.text }]}>COMMAND CENTER</Text>
+                <Image source={require('../../assets/images/icon.png')} style={styles.headerLogo} resizeMode="contain" />
+                <View>
+                  <Text style={[styles.welcome, { color: colors.textSecondary }]}>WELCOME BACK</Text>
+                  <Text style={[styles.title, { color: colors.text }]}>COMMAND CENTER</Text>
+                </View>
             </View>
 
             {/* THE DAILY RITUAL (Streak Orb) */}
             <DailyStreakOrb />
 
+            {/* FEATURED PARTNER — prime ad spot; drives foot traffic; businesses pay for this placement */}
+            {featuredPartner && (
+              <View style={styles.featuredSection}>
+                <Text style={[styles.featuredLabel, { color: colors.textSecondary }]}>FEATURED PARTNER</Text>
+                <FeaturedPartnerCard partner={featuredPartner} />
+              </View>
+            )}
+
             {/* QUICK ACTIONS GRID */}
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>QUICK ACTIONS</Text>
             <View style={styles.grid}>
+                <TouchableOpacity 
+                    style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => handleNav('/missions')}
+                >
+                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
+                        <Ionicons name="flag" size={24} color={COLORS.gold[0]} />
+                    </View>
+                    <Text style={[styles.gridLabel, { color: colors.text }]}>Missions</Text>
+                    <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Earn OT Points</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity 
                     style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                     onPress={() => handleNav('/vote')}
@@ -94,27 +119,38 @@ export default function OrbHubScreen() {
                     <Text style={[styles.gridLabel, { color: colors.text }]}>Vault</Text>
                     <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Assets</Text>
                 </TouchableOpacity>
+
+                <TouchableOpacity 
+                    style={[styles.gridItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={() => handleNav('/spheres')}
+                >
+                    <View style={[styles.iconCircle, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                        <Ionicons name="people" size={24} color="#8B5CF6" />
+                    </View>
+                    <Text style={[styles.gridLabel, { color: colors.text }]}>Spheres</Text>
+                    <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Groups & pool</Text>
+                </TouchableOpacity>
             </View>
 
             {/* DAILY FACT */}
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>KNOWLEDGE BASE</Text>
             <DailyFactCard />
 
-            {/* UPCOMING FEATURE TEASER */}
-            <View style={[styles.teaser, { borderColor: colors.border }]}>
+            {/* SPHERES — invite-only groups, pool & share */}
+            <TouchableOpacity style={[styles.teaser, { borderColor: colors.border }]} onPress={() => handleNav('/spheres')} activeOpacity={0.9}>
                 <LinearGradient
-                    colors={[COLORS.neonBlue[0], COLORS.neonBlue[1]]}
+                    colors={['#8B5CF6', '#7C3AED']}
                     style={styles.teaserGrad}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                 >
-                    <Ionicons name="planet" size={24} color="#fff" />
+                    <Ionicons name="people" size={24} color="#fff" />
                     <View>
-                        <Text style={styles.teaserTitle}>SPHERES v2.0</Text>
-                        <Text style={styles.teaserSub}>Team battles coming soon.</Text>
+                        <Text style={styles.teaserTitle}>SPHERES</Text>
+                        <Text style={styles.teaserSub}>Invite-only groups. Pool OT Points. Share experiences.</Text>
                     </View>
                 </LinearGradient>
-            </View>
+            </TouchableOpacity>
 
         </ScrollView>
       </SafeAreaView>
@@ -126,11 +162,14 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   content: { padding: 20, paddingBottom: 100 },
-  header: { marginBottom: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  headerLogo: { width: 44, height: 36 },
   welcome: { fontSize: 10, fontWeight: 'bold', letterSpacing: 2, marginBottom: 4 },
   title: { fontSize: 28, fontWeight: '900', letterSpacing: -1 },
   
   sectionTitle: { fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 12, marginTop: 12 },
+  featuredSection: { marginTop: 20, marginBottom: 4 },
+  featuredLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   gridItem: { width: '48%', padding: 16, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
   iconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },

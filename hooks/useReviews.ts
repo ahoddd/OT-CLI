@@ -60,5 +60,30 @@ export const useReviews = () => {
 
   const getPartnerReviews = (partnerId: string) => reviews.filter(r => r.partnerId === partnerId);
 
-  return { reviews, addReview, getPartnerReviews };
+  /**
+   * Orb Score™ — Only on OrbTap. Copyrightable unique metric:
+   * Blends star rating with verified-visit weight so that reviews from
+   * people who actually visited (Proof-linked) count more. 0–100 scale.
+   */
+  const getOrbScore = (partnerId: string): { score: number; verifiedCount: number; totalCount: number; label: string } => {
+    const partnerReviews = reviews.filter(r => r.partnerId === partnerId);
+    if (partnerReviews.length === 0) {
+      return { score: 0, verifiedCount: 0, totalCount: 0, label: 'No reviews yet' };
+    }
+    const verified = partnerReviews.filter(r => r.verified);
+    // Verified reviews weighted 1.5x; then normalize to 0–100 (5 stars = 100).
+    const weightedSum = partnerReviews.reduce((acc, r) => acc + (r.verified ? r.rating * 1.5 : r.rating), 0);
+    const totalWeight = partnerReviews.reduce((acc, r) => acc + (r.verified ? 1.5 : 1), 0);
+    const avg = totalWeight > 0 ? weightedSum / totalWeight : 0;
+    const score = Math.round((avg / 5) * 100);
+    const label = score >= 90 ? 'Elite' : score >= 75 ? 'Great' : score >= 60 ? 'Good' : 'Rising';
+    return {
+      score: Math.min(100, Math.max(0, score)),
+      verifiedCount: verified.length,
+      totalCount: partnerReviews.length,
+      label,
+    };
+  };
+
+  return { reviews, addReview, getPartnerReviews, getOrbScore };
 };

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/Colors';
-import { OrbTapLogo } from './AppLogos';
+import { OrbTapLogoImage } from './AppLogos';
 import * as Haptics from 'expo-haptics';
 
 export const AmbassadorCard = () => {
@@ -39,7 +39,7 @@ export const AmbassadorCard = () => {
                     <Text style={styles.title}>AMBASSADOR</Text>
                     <Text style={styles.sub}>Invite & Earn</Text>
                 </View>
-                <OrbTapLogo width={60} />
+                <OrbTapLogoImage width={56} height={44} />
             </View>
 
             <View style={styles.middle}>

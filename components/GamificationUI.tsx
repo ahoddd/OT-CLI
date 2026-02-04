@@ -62,13 +62,28 @@ export const PartnerBadge = ({ tier, size = 40 }: { tier: string, size?: number 
     </View>
 );
 
-export const XpBar = ({ current, max, label }: any) => {
-    const percent = Math.min((current / max) * 100, 100);
+interface XpBarProps {
+  current: number;
+  max: number;
+  label?: string;
+  levelTitle?: string;
+  nextLevelTitle?: string | null;
+  nextLevelPerk?: string | null;
+  isMaxLevel?: boolean;
+}
+
+export const XpBar = ({ current, max, label, levelTitle, nextLevelTitle, nextLevelPerk, isMaxLevel }: XpBarProps) => {
+    const percent = max > 0 ? Math.min((current / max) * 100, 100) : 0;
     return (
         <View style={styles.xpContainer}>
             <View style={styles.xpHeader}>
-                <Text style={styles.xpLabel}>{label || 'LEVEL PROGRESS'}</Text>
-                <Text style={styles.xpVal}>{current} / {max} XP</Text>
+                <View>
+                    {levelTitle != null && (
+                        <Text style={styles.xpLevelTitle}>Level {levelTitle}</Text>
+                    )}
+                    <Text style={styles.xpLabel}>{label ?? (nextLevelPerk ? `Next: ${nextLevelPerk}` : 'LEVEL PROGRESS')}</Text>
+                </View>
+                <Text style={styles.xpVal}>{current.toLocaleString()} / {max.toLocaleString()} XP</Text>
             </View>
             <View style={styles.track}>
                 <LinearGradient
@@ -78,6 +93,9 @@ export const XpBar = ({ current, max, label }: any) => {
                     end={{ x: 1, y: 0 }}
                 />
             </View>
+            {nextLevelTitle && !isMaxLevel && (
+                <Text style={styles.xpNextTeaser}>Next level: <Text style={styles.xpNextBold}>{nextLevelTitle}</Text></Text>
+            )}
         </View>
     );
 };
@@ -90,9 +108,12 @@ const styles = StyleSheet.create({
   levelText: { color: '#fff', fontSize: 8, fontWeight: '900' },
   
   xpContainer: { width: '100%' },
-  xpHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  xpHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
+  xpLevelTitle: { color: COLORS.neonBlue[0], fontSize: 11, fontWeight: '800', letterSpacing: 1, marginBottom: 2 },
   xpLabel: { color: '#888', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
-  xpVal: { color: '#fff', fontSize: 10, fontFamily: 'monospace' },
-  track: { height: 6, backgroundColor: '#333', borderRadius: 3, overflow: 'hidden' },
-  fill: { height: '100%' }
+  xpVal: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  track: { height: 8, backgroundColor: '#333', borderRadius: 4, overflow: 'hidden' },
+  fill: { height: '100%' },
+  xpNextTeaser: { color: '#666', fontSize: 10, marginTop: 6 },
+  xpNextBold: { color: COLORS.neonBlue[0], fontWeight: '800' }
 });

@@ -1,49 +1,77 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { getTierForXp, getNextTier, getProgressToNextLevel, LEVEL_TIERS, type LevelTier } from '../constants/Levels';
 
 export interface UserRank {
   level: number;
   xp: number;
   nextLevelXp: number;
   title: string;
-  perk: string; // The FOMO Hook
+  perk: string;
+  perkShort: string;
+  nextLevelTitle: string | null;
+  nextLevelPerk: string | null;
+  xpToNextLevel: number;
+  progress: number; // 0–1 to next level
+  isMaxLevel: boolean;
+  tier: LevelTier;
 }
 
-const RANKS = [
-  { level: 1, title: 'Scout', xpReq: 0, perk: 'Basic Map Access' },
-  { level: 2, title: 'Mapper', xpReq: 500, perk: 'Unlock: 2x Grid View' },
-  { level: 3, title: 'Orbiter', xpReq: 1500, perk: 'Unlock: Custom App Icons' },
-  { level: 4, title: 'Voyager', xpReq: 3000, perk: 'Unlock: 1.1x Point Multiplier' },
-  { level: 5, title: 'Apex', xpReq: 5000, perk: 'Unlock: Secret "Black Tier" Venues' },
-];
+// In real app this comes from Firebase / backend
+const DEFAULT_XP = 1250;
 
 export const useGamification = () => {
-  // Mock data for MVP - in real app this comes from Firebase
-  const [xp, setXp] = useState(1250); 
-  const [rank, setRank] = useState<UserRank>({ ...RANKS[0], xp: 0, nextLevelXp: 100 });
+  const [xp, setXp] = useState(DEFAULT_XP);
+  const [rank, setRank] = useState<UserRank>(() => {
+    const tier = getTierForXp(DEFAULT_XP);
+    const next = getNextTier(DEFAULT_XP);
+    const prog = getProgressToNextLevel(DEFAULT_XP);
+    return {
+      level: tier.level,
+      xp: DEFAULT_XP,
+      nextLevelXp: next?.xpRequired ?? tier.xpRequired,
+      title: tier.title,
+      perk: tier.perk,
+      perkShort: tier.perkShort,
+      nextLevelTitle: next?.title ?? null,
+      nextLevelPerk: next?.perk ?? null,
+      xpToNextLevel: prog ? prog.required - prog.current : 0,
+      progress: prog?.progress ?? 0,
+      isMaxLevel: !next,
+      tier,
+    };
+  });
+
+  const recalcRank = useCallback((currentXp: number) => {
+    const tier = getTierForXp(currentXp);
+    const next = getNextTier(currentXp);
+    const prog = getProgressToNextLevel(currentXp);
+    setRank({
+      level: tier.level,
+      xp: currentXp,
+      nextLevelXp: next?.xpRequired ?? tier.xpRequired,
+      title: tier.title,
+      perk: tier.perk,
+      perkShort: tier.perkShort,
+      nextLevelTitle: next?.title ?? null,
+      nextLevelPerk: next?.perk ?? null,
+      xpToNextLevel: prog ? prog.required - prog.current : 0,
+      progress: prog?.progress ?? 0,
+      isMaxLevel: !next,
+      tier,
+    });
+  }, []);
 
   useEffect(() => {
-    calculateRank();
-  }, [xp]);
+    recalcRank(xp);
+  }, [xp, recalcRank]);
 
-  const calculateRank = () => {
-    let currentRank = RANKS[0];
-    let nextXp = RANKS[1].xpReq;
+  const getProgress = useCallback(() => rank.progress, [rank.progress]);
 
-    for (let i = 0; i < RANKS.length; i++) {
-      if (xp >= RANKS[i].xpReq) {
-        currentRank = RANKS[i];
-        nextXp = RANKS[i + 1]?.xpReq || 100000;
-      }
-    }
-    setRank({ ...currentRank, xp, nextLevelXp: nextXp });
-  };
+  const addXp = useCallback((amount: number) => {
+    setXp((prev) => prev + amount);
+  }, []);
 
-  const getProgress = () => {
-    const prevLevelXp = RANKS[rank.level - 1].xpReq;
-    const levelRange = rank.nextLevelXp - prevLevelXp;
-    const currentProgress = xp - prevLevelXp;
-    return Math.min(Math.max(currentProgress / levelRange, 0), 1);
-  };
-
-  return { xp, rank, getProgress };
+  return { xp, setXp, addXp, rank, getProgress };
 };
+
+export { LEVEL_TIERS };

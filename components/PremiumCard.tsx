@@ -9,15 +9,16 @@ import Animated, {
   withSequence,
   interpolate
 } from 'react-native-reanimated';
-import { OrbTapLogo } from './AppLogos';
+import { OrbTapLogoImage } from './AppLogos';
 import { UserBadge } from './GamificationUI';
+import { OTPointsBadge } from './OTPointsBadge';
 import { COLORS } from '../constants/Colors';
 import { useTheme } from '../hooks/useTheme';
 import * as Haptics from 'expo-haptics';
 
 interface PremiumCardProps {
   balance: number;
-  rank: { level: number; title: string };
+  rank: { level: number; title: string; xp?: number; nextLevelXp?: number; progress?: number; isMaxLevel?: boolean };
 }
 
 const { width } = Dimensions.get('window');
@@ -115,16 +116,16 @@ export const PremiumCard = ({ balance, rank }: PremiumCardProps) => {
             }]}>
                <UserBadge level={rank.level} size={42} />
             </View>
-            <View style={{ opacity: isDark ? 0.8 : 1 }}>
-              <OrbTapLogo width={80} />
+            <View style={{ opacity: isDark ? 0.9 : 1 }}>
+              <OrbTapLogoImage width={72} height={48} />
             </View>
           </View>
 
           <View style={styles.middleRow}>
             <Text style={[styles.label, { color: colors.textSecondary }]}>AVAILABLE ASSETS</Text>
-            <Text style={[styles.balance, { color: colors.text }]}>
-              {balance.toLocaleString()} <Text style={{ fontSize: 14, color: COLORS.gold[0] }}>PTS</Text>
-            </Text>
+            <View style={styles.balanceRow}>
+              <OTPointsBadge amount={balance} size={32} label="pts" compact textColor={colors.text} />
+            </View>
           </View>
 
           <View style={styles.bottomRow}>
@@ -132,13 +133,23 @@ export const PremiumCard = ({ balance, rank }: PremiumCardProps) => {
               <Text style={[styles.label, { color: colors.textSecondary }]}>IDENTITY</Text>
               <Text style={[styles.value, { color: isDark ? '#ccc' : '#333' }]}>EXPLORER ONE</Text>
             </View>
-            <View style={[styles.rankBadge, { 
-                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
-            }]}>
-               <Text style={[styles.rankText, { color: isDark ? COLORS.neonBlue[0] : '#3b82f6' }]}>
-                 {rank.title.toUpperCase()}
-               </Text>
+            <View>
+              <View style={[styles.rankBadge, { 
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
+              }]}>
+                <Text style={[styles.rankText, { color: isDark ? COLORS.neonBlue[0] : '#3b82f6' }]}>
+                  Level {rank.level} · {rank.title.toUpperCase()}
+                </Text>
+              </View>
+              {rank.xp != null && rank.nextLevelXp != null && !rank.isMaxLevel && (
+                <View style={styles.xpMiniRow}>
+                  <View style={[styles.xpMiniTrack, { backgroundColor: isDark ? '#333' : '#e5e5ea' }]}>
+                    <View style={[styles.xpMiniFill, { width: `${((rank.progress ?? 0) * 100).toFixed(0)}%`, backgroundColor: COLORS.neonBlue[0] }]} />
+                  </View>
+                  <Text style={[styles.xpMiniText, { color: colors.textSecondary }]}>XP</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -191,9 +202,14 @@ const styles = StyleSheet.create({
   },
   middleRow: { marginTop: 10 },
   label: { fontSize: 9, fontWeight: 'bold', letterSpacing: 2, marginBottom: 4 },
+  balanceRow: { flexDirection: 'row', alignItems: 'center' },
   balance: { fontSize: 38, fontWeight: '900', letterSpacing: -1 },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   value: { fontSize: 14, fontWeight: 'bold', letterSpacing: 1.5 },
   rankBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
-  rankText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 }
+  rankText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  xpMiniRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  xpMiniTrack: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
+  xpMiniFill: { height: '100%', borderRadius: 2 },
+  xpMiniText: { fontSize: 8, fontWeight: '800' }
 });

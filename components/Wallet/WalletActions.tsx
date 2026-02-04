@@ -40,7 +40,7 @@ export const WalletActions = ({ action, onClose, balance }: WalletActionsProps) 
         { 
           text: "Confirm", 
           onPress: async () => {
-            await addTransaction(-totalCost, `Transfer to ${recipient} (Fee: ${burnFee})`);
+            await addTransaction({ type: 'spend', amount: -totalCost, reason: `Transfer to ${recipient} (Fee: ${burnFee})` });
             onClose();
             Alert.alert("Sent", "Transaction complete.");
           }

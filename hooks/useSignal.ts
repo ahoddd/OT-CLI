@@ -1,46 +1,23 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { getOrbSignalMarket, MOCK_ORB_SIGNAL_MARKETS, OrbSignalMarket, VOTE_COST } from '../constants/OrbSignal';
 
-export interface Market {
-  id: string;
-  question: string;
-  outcomes: string[];
-  pool: number; // Total points
-  endsAt: string;
-  category: 'Pop Culture' | 'City' | 'Sports';
-  percentages: number[]; // e.g. [60, 40]
-}
+/** Hook for Orb Signal: get market by id and place forecast (mock). List page uses constants directly for local state. */
+export function useSignal() {
+  const [votes, setVotes] = useState<Record<string, number>>({}); // marketId -> outcomeIndex
 
-const MOCK_MARKETS: Market[] = [
-  {
-    id: 'm1',
-    question: 'Will it rain in NYC this weekend?',
-    outcomes: ['Yes', 'No'],
-    pool: 45000,
-    endsAt: 'Friday 5PM',
-    category: 'City',
-    percentages: [30, 70]
-  },
-  {
-    id: 'm2',
-    question: 'Who headlines the Downtown Festival?',
-    outcomes: ['The Weeknd', 'Dua Lipa'],
-    pool: 120000,
-    endsAt: 'Sunday 12PM',
-    category: 'Pop Culture',
-    percentages: [55, 45]
-  }
-];
+  const getMarket = useCallback((id: string): OrbSignalMarket | undefined => {
+    return getOrbSignalMarket(id);
+  }, []);
 
-export const useSignal = () => {
-  const [markets, setMarkets] = useState<Market[]>(MOCK_MARKETS);
-
-  const getMarket = (id: string) => markets.find(m => m.id === id);
-
-  const placeForecast = (marketId: string, outcomeIndex: number, amount: number) => {
-    // Mock logic: just alert for MVP
-    console.log(`Forecast placed: Market ${marketId}, Outcome ${outcomeIndex}, Amount ${amount}`);
+  const placeForecast = useCallback((marketId: string, outcomeIndex: number, amount: number) => {
+    setVotes((prev) => ({ ...prev, [marketId]: outcomeIndex }));
     return true;
-  };
+  }, []);
 
-  return { markets, getMarket, placeForecast };
-};
+  return {
+    markets: MOCK_ORB_SIGNAL_MARKETS,
+    getMarket,
+    placeForecast,
+    voteCost: VOTE_COST,
+  };
+}

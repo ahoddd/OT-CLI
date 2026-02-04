@@ -1,68 +1,107 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  DEFAULT_FLAGS,
+  type FeatureFlags,
+  type FlagKey,
+  type FlagValue,
+  type MapProvider,
+} from '../constants/Flags';
 
-type MapProvider = 'mapbox' | 'native' | 'none';
+const STORAGE_KEY = 'ORBTAP_FLAGS';
+const AUDIT_KEY = 'ORBTAP_FLAGS_AUDIT';
+const AUDIT_MAX = 20;
 
-interface Flags {
-  isMapboxEnabled: boolean;
-  mapProvider: MapProvider;
-  useMockLocation: boolean;
+export interface AuditEntry {
+  key: FlagKey;
+  value: FlagValue;
+  timestamp: number;
 }
 
 interface FlagContextType {
-  flags: Flags;
-  setMapProvider: (provider: MapProvider) => void;
-  toggleMockLocation: () => void;
+  flags: FeatureFlags;
+  setFlag: (key: FlagKey, value: FlagValue) => void;
+  resetFlags: () => void;
+  auditLog: AuditEntry[];
 }
 
 const FlagContext = createContext<FlagContextType | undefined>(undefined);
 
+function mergeWithDefaults(parsed: Partial<FeatureFlags>): FeatureFlags {
+  return {
+    ...DEFAULT_FLAGS,
+    ...parsed,
+    mapProvider: (parsed?.mapProvider ?? DEFAULT_FLAGS.mapProvider) as MapProvider,
+  };
+}
+
 export const FlagProvider = ({ children }: { children: React.ReactNode }) => {
-  // DEFAULT TO 'native' (Apple Maps) TO AVOID CRASH
-  const [flags, setFlags] = useState<Flags>({
-    isMapboxEnabled: false,
-    mapProvider: 'native', 
-    useMockLocation: true,
-  });
+  const [flags, setFlagsState] = useState<FeatureFlags>(() => ({ ...DEFAULT_FLAGS }));
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
   useEffect(() => {
-    loadFlags();
+    (async () => {
+      try {
+        const [saved, savedAudit] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEY),
+          AsyncStorage.getItem(AUDIT_KEY),
+        ]);
+        if (saved) {
+          const parsed = JSON.parse(saved) as Partial<FeatureFlags>;
+          setFlagsState(mergeWithDefaults(parsed));
+        }
+        if (savedAudit) {
+          const list = JSON.parse(savedAudit) as AuditEntry[];
+          setAuditLog(Array.isArray(list) ? list.slice(-AUDIT_MAX) : []);
+        }
+      } catch (e) {
+        console.warn('FlagContext load error:', e);
+      }
+    })();
   }, []);
 
-  const loadFlags = async () => {
+  const persist = useCallback(async (newFlags: FeatureFlags, newAudit: AuditEntry[]) => {
     try {
-      const saved = await AsyncStorage.getItem('ORBTAP_FLAGS');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Force override if it was set to mapbox previously
-        if (parsed.mapProvider === 'mapbox') parsed.mapProvider = 'native';
-        setFlags(parsed);
-      }
-    } catch (e) { console.log(e); }
-  };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newFlags));
+      await AsyncStorage.setItem(AUDIT_KEY, JSON.stringify(newAudit.slice(-AUDIT_MAX)));
+    } catch (e) {
+      console.warn('FlagContext persist error:', e);
+    }
+  }, []);
 
-  const saveFlags = async (newFlags: Flags) => {
-    setFlags(newFlags);
-    await AsyncStorage.setItem('ORBTAP_FLAGS', JSON.stringify(newFlags));
-  };
+  const setFlag = useCallback(
+    (key: FlagKey, value: FlagValue) => {
+      setFlagsState((prev) => {
+        const next = { ...prev, [key]: value };
+        const entry: AuditEntry = { key, value, timestamp: Date.now() };
+        setAuditLog((log) => {
+          const nextLog = [...log, entry].slice(-AUDIT_MAX);
+          persist(next, nextLog).catch(() => {});
+          return nextLog;
+        });
+        return next;
+      });
+    },
+    [persist]
+  );
 
-  const setMapProvider = (provider: MapProvider) => {
-    saveFlags({ ...flags, mapProvider: provider, isMapboxEnabled: provider === 'mapbox' });
-  };
-
-  const toggleMockLocation = () => {
-    saveFlags({ ...flags, useMockLocation: !flags.useMockLocation });
-  };
+  const resetFlags = useCallback(() => {
+    setFlagsState({ ...DEFAULT_FLAGS });
+    setAuditLog([]);
+    persist({ ...DEFAULT_FLAGS }, []).catch((e) => console.warn('FlagContext reset persist:', e));
+  }, [persist]);
 
   return (
-    <FlagContext.Provider value={{ flags, setMapProvider, toggleMockLocation }}>
+    <FlagContext.Provider value={{ flags, setFlag, resetFlags, auditLog }}>
       {children}
     </FlagContext.Provider>
   );
 };
 
-export const useFlags = () => {
+export const useFlags = (): FlagContextType => {
   const context = useContext(FlagContext);
-  if (!context) throw new Error("useFlags must be used within FlagProvider");
+  if (!context) throw new Error('useFlags must be used within FlagProvider');
   return context;
 };
+
+export type { MapProvider };

@@ -5,6 +5,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/Colors';
 import { useTheme } from '../../hooks/useTheme';
+import { usePreferences } from '../../hooks/usePreferences';
+import { PremiumBadge } from '../../components/PremiumBadge';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
@@ -22,6 +24,8 @@ const CHART_DATA = [40, 65, 50, 80, 95, 70, 85]; // Simple visual representation
 export default function PartnerDashboard() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { prefs } = usePreferences();
+  const isPremium = prefs.premiumMember ?? false;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -30,7 +34,10 @@ export default function PartnerDashboard() {
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                 <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>PARTNER COMMAND</Text>
+            <View style={styles.headerTitleRow}>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>PARTNER COMMAND</Text>
+              {isPremium && <PremiumBadge variant="compact" size={20} />}
+            </View>
             <TouchableOpacity>
                  <Ionicons name="download-outline" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -115,6 +122,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16 },
   backBtn: { padding: 4 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 16, fontWeight: '900', letterSpacing: 1 },
   content: { padding: 20 },
   banner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderRadius: 16, marginBottom: 20 },

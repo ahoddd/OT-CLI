@@ -1,141 +1,178 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, Dimensions } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Share, Image, Platform } from 'react-native';
+import ViewShot from 'react-native-view-shot';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../constants/Colors';
-import { OrbTapLogo } from '../../components/AppLogos';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { TIER_COLORS } from '../../constants/MockData';
+import type { Tier } from '../../constants/MockData';
+import { OTPointsBadge } from '../../components/OTPointsBadge';
+import { useFlags } from '../../components/FlagContext';
 
-const { width } = Dimensions.get('window');
+const TIER_OPTIONS: Tier[] = ['common', 'rare', 'apex', 'legendary'];
+
+function getTierColor(tier: string): string {
+  const t = TIER_OPTIONS.includes(tier as Tier) ? (tier as Tier) : 'rare';
+  return TIER_COLORS[t];
+}
+
+function partialId(id: string): string {
+  if (!id || id.length <= 8) return id;
+  return id.slice(-8).toUpperCase();
+}
+
+function formatTimestamp(createdAt: string): string {
+  const n = parseInt(createdAt, 10);
+  if (Number.isNaN(n)) return new Date().toLocaleString();
+  return new Date(n).toLocaleString();
+}
+
+const APP_LINK = 'https://orbtap.app';
+const SHARE_MESSAGE = (partner: string, points: string) =>
+  `Just earned ${points} OT Points at ${partner} on OrbTap — discover rewards near you. ${APP_LINK}`;
 
 export default function ProofScreen() {
-  const { id, partner, points, tier } = useLocalSearchParams();
   const router = useRouter();
+  const { flags } = useFlags();
+  const cardRef = useRef<ViewShot>(null);
+  const params = useLocalSearchParams<{
+    id?: string;
+    proofId?: string;
+    partner?: string;
+    points?: string;
+    tier?: string;
+    createdAt?: string;
+  }>();
 
-  useEffect(() => {
-    // SUCCESS HAPTIC PATTERN
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, []);
+  const proofId = params.id ?? params.proofId ?? '';
+  const partner = params.partner ?? 'Partner';
+  const points = params.points ?? '0';
+  const tier = params.tier ?? 'rare';
+  const createdAt = params.createdAt ?? String(Date.now());
+
+  const tierColor = getTierColor(tier);
 
   const handleShare = async () => {
     try {
-      await Share.share({
-        message: `Just secured ${points} XP at ${partner} on OrbTap. Leveling up my Neural Link. 🚀`,
-      });
-    } catch (error) {
-      console.log(error);
+      let imageUri: string | undefined;
+      if (cardRef.current?.capture) {
+        imageUri = await cardRef.current.capture();
+      }
+      const message = SHARE_MESSAGE(partner, points);
+      if (imageUri && Platform.OS !== 'web') {
+        await Share.share({
+          message: message + '\n\n' + APP_LINK,
+          url: imageUri,
+          title: 'OrbTap Proof',
+        });
+      } else {
+        await Share.share({
+          message: message,
+          title: 'OrbTap Proof',
+        });
+      }
+    } catch {
+      // User cancelled or share failed
     }
   };
 
   return (
-    <View style={styles.container}>
-       <LinearGradient
-        colors={['#000', '#1a1a1a']}
-        style={styles.background}
-       />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Image source={require('../../assets/images/icon.png')} style={styles.topBarLogo} resizeMode="contain" />
+        <Text style={styles.topBarTitle}>Proof</Text>
+      </View>
 
-       {/* SUCCESS HEADER */}
-       <Animated.View entering={FadeInDown.delay(200)} style={styles.header}>
-            <View style={styles.iconBox}>
-                <Ionicons name="checkmark" size={40} color={COLORS.success} />
-            </View>
-            <Text style={styles.title}>VERIFIED WIN</Text>
-            <Text style={styles.sub}>Secure connection established.</Text>
-       </Animated.View>
+      <ViewShot
+        ref={cardRef}
+        options={{ format: 'png', quality: 1, result: 'tmpfile' }}
+        style={styles.shotWrap}
+      >
+        <View style={[styles.card, { borderColor: tierColor + '44' }]}>
+          <View style={[styles.tierBar, { backgroundColor: tierColor }]} />
+          <View style={styles.cardHeader}>
+            <Ionicons name="shield-checkmark" size={24} color="#22C55E" />
+            <Text style={styles.headerTitle}>VERIFIED PROOF</Text>
+          </View>
+          <Text style={styles.partnerName}>{partner}</Text>
+          <Text style={[styles.tierLabel, { color: tierColor }]}>{tier.toUpperCase()} TIER</Text>
+          <View style={styles.earnedRow}>
+            <Text style={styles.earnedLabel}>Earned </Text>
+            <OTPointsBadge amount={points} size={28} label="pts" compact textColor="#fff" />
+          </View>
+          <Text style={styles.timestamp}>{formatTimestamp(createdAt)}</Text>
+          <View style={styles.footer}>
+            <Text style={styles.orbIdLabel}>OrbTap ID</Text>
+            <Text style={styles.orbIdValue}>{partialId(proofId) || '—'}</Text>
+          </View>
+          <View style={styles.cardLogoWrap}>
+            <Image source={require('../../assets/images/icon.png')} style={styles.cardLogo} resizeMode="contain" />
+          </View>
+        </View>
+      </ViewShot>
 
-       {/* THE ARTIFACT CARD */}
-       <Animated.View entering={ZoomIn.duration(600)} style={styles.cardContainer}>
-            <LinearGradient
-                colors={['#111', '#000']}
-                style={styles.card}
-            >
-                <View style={[styles.tierBar, { backgroundColor: COLORS.gold[0] }]} />
-                
-                <View style={styles.cardContent}>
-                    <View style={styles.row}>
-                        <OrbTapLogo width={80} />
-                        <Text style={styles.date}>{new Date().toLocaleDateString()}</Text>
-                    </View>
-
-                    <View style={styles.center}>
-                        <Text style={styles.points}>+{points}</Text>
-                        <Text style={styles.xpLabel}>XP ACQUIRED</Text>
-                    </View>
-
-                    <View style={styles.footer}>
-                        <View>
-                            <Text style={styles.label}>LOCATION</Text>
-                            <Text style={styles.val}>{partner}</Text>
-                        </View>
-                        <View>
-                            <Text style={styles.label}>TIER</Text>
-                            <Text style={[styles.val, { color: COLORS.gold[0] }]}>{tier}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* Holographic Overlay */}
-                <LinearGradient
-                    colors={['rgba(255,255,255,0.1)', 'transparent']}
-                    style={styles.gloss}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                />
-            </LinearGradient>
-       </Animated.View>
-
-       {/* ACTIONS */}
-       <View style={styles.actions}>
-            <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-                <LinearGradient
-                    colors={[COLORS.neonBlue[0], COLORS.neonBlue[1]]}
-                    style={styles.gradBtn}
-                >
-                    <Ionicons name="share-social" size={20} color="#fff" />
-                    <Text style={styles.btnText}>SHARE PROOF</Text>
-                </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.closeBtn} onPress={() => router.replace('/(tabs)/wallet')}>
-                <Text style={styles.closeText}>STASH IN VAULT</Text>
-            </TouchableOpacity>
-       </View>
-    </View>
+      <TouchableOpacity style={[styles.shareBtn, { backgroundColor: '#22C55E' }]} onPress={handleShare} activeOpacity={0.8}>
+        <Ionicons name="share-social" size={22} color="#000" />
+        <Text style={styles.shareBtnText}>SHARE PROOF</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.closeBtn} onPress={() => router.replace('/(tabs)/wallet')} activeOpacity={0.8}>
+        <Text style={styles.closeBtnText}>Close</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  background: { position: 'absolute', width: '100%', height: '100%' },
-  
-  header: { alignItems: 'center', marginBottom: 40 },
-  iconBox: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(74, 222, 128, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: COLORS.success },
-  title: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 2 },
-  sub: { color: '#888', fontSize: 12, marginTop: 4 },
-
-  cardContainer: { width: width * 0.85, height: 400, shadowColor: COLORS.gold[0], shadowOpacity: 0.3, shadowRadius: 20, shadowOffset: {width:0,height:0} },
-  card: { flex: 1, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: '#333' },
-  tierBar: { height: 6, width: '100%' },
-  cardContent: { flex: 1, padding: 30, justifyContent: 'space-between' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  date: { color: '#666', fontSize: 12, fontFamily: 'monospace' },
-  
-  center: { alignItems: 'center' },
-  points: { color: '#fff', fontSize: 64, fontWeight: '900' },
-  xpLabel: { color: COLORS.neonBlue[0], fontSize: 14, fontWeight: 'bold', letterSpacing: 4 },
-
-  footer: { flexDirection: 'row', justifyContent: 'space-between' },
-  label: { color: '#666', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
-  val: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginTop: 4 },
-  
-  gloss: { position: 'absolute', width: '100%', height: '100%' },
-
-  actions: { position: 'absolute', bottom: 60, width: '100%', paddingHorizontal: 40, gap: 16 },
-  shareBtn: { borderRadius: 16, overflow: 'hidden' },
-  gradBtn: { padding: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
-  btnText: { color: '#fff', fontWeight: '900', letterSpacing: 1 },
-  closeBtn: { padding: 20, alignItems: 'center' },
-  closeText: { color: '#666', fontWeight: 'bold', letterSpacing: 1 }
+  container: { flex: 1, backgroundColor: '#000' },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+    gap: 12,
+  },
+  backBtn: { padding: 8 },
+  topBarLogo: { width: 36, height: 30 },
+  topBarTitle: { color: '#FFF', fontSize: 18, fontWeight: '700', flex: 1 },
+  shotWrap: { marginHorizontal: 24, marginTop: 24, marginBottom: 24 },
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
+    borderWidth: 2,
+    padding: 24,
+    overflow: 'hidden',
+  },
+  tierBar: { position: 'absolute', top: 0, left: 0, right: 0, height: 4, borderTopLeftRadius: 18, borderTopRightRadius: 18 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  headerTitle: { color: '#FFF', fontSize: 16, fontWeight: '800', letterSpacing: 1.5 },
+  partnerName: { color: '#FFF', fontSize: 26, fontWeight: '800', marginBottom: 4 },
+  tierLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 20 },
+  earnedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  earnedLabel: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  timestamp: { color: '#888', fontSize: 14, marginBottom: 20 },
+  footer: { paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
+  orbIdLabel: { color: '#666', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
+  orbIdValue: { color: '#AAA', fontSize: 14, fontVariant: ['tabular-nums'] },
+  cardLogoWrap: { position: 'absolute', bottom: 20, right: 20 },
+  cardLogo: { width: 48, height: 40 },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginHorizontal: 24,
+    marginBottom: 12,
+  },
+  shareBtnText: { color: '#000', fontSize: 16, fontWeight: '700' },
+  arenaBtn: { backgroundColor: '#F59E0B' },
+  closeBtn: { paddingVertical: 14, alignItems: 'center' },
+  closeBtnText: { color: '#888', fontSize: 16 },
 });

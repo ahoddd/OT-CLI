@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "orbtap",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -14,11 +14,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.orbtap",
+      "bundleIdentifier": "com.orbtap.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "OrbTap needs camera access to scan partner QRs.",
+        "NSCameraUsageDescription": "OrbTap needs camera access to scan partner QR codes.",
         "NSPhotoLibraryUsageDescription": "Allow access to upload your profile avatar.",
-        "NSLocationWhenInUseUsageDescription": "OrbTap needs your location to find nearby drops."
+        "NSLocationWhenInUseUsageDescription": "OrbTap needs your location to find nearby drops.",
+        "NSFaceIDUsageDescription": "Use Face ID to sign in to OrbTap quickly and securely."
       }
     },
     "android": {
@@ -57,6 +58,7 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "newArchEnabled": true
   }
 }

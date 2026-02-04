@@ -41,29 +41,34 @@ export const useStreak = () => {
     await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(newState));
   };
 
+  /** Returns YYYY-MM-DD for yesterday */
+  const getYesterday = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  };
+
   const checkIn = () => {
     const today = getToday();
+    const yesterday = getYesterday();
     const { currentStreak, bestStreak, lastCheckInDate } = streak;
 
-    if (lastCheckInDate === today) return; // Already checked in
+    if (lastCheckInDate === today) return currentStreak; // Already checked in today
 
     let newCurrent = 1;
-    // Simple logic: if last check-in was yesterday, increment.
-    // In real app, use moment/date-fns for robust diffing.
-    // For MVP: we just increment for demo purposes if not today.
-    if (lastCheckInDate) {
-       // Mock logic: Always increment for MVP satisfaction unless it's the same day
-       newCurrent = currentStreak + 1;
+    if (lastCheckInDate === yesterday) {
+      newCurrent = currentStreak + 1; // Consecutive day: extend streak
     }
+    // If lastCheckInDate is older than yesterday, streak resets to 1
 
     const newBest = Math.max(newCurrent, bestStreak);
-    
+
     saveStreak({
       currentStreak: newCurrent,
       bestStreak: newBest,
       lastCheckInDate: today,
     });
-    
+
     return newCurrent;
   };
 

@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
-import { Partner, MOCK_PARTNERS, TIER_COLORS } from '../constants/MockData';
+import { Partner, MOCK_PARTNERS, MOCK_MISSIONS, TIER_COLORS } from '../constants/MockData';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
 import * as Location from 'expo-location';
 
@@ -25,26 +26,51 @@ export const OrbTapMap: React.FC<OrbTapMapProps> = ({ onSelectPartner, selectedI
     })();
   }, []);
 
-  // Center on NYC (Lower Manhattan) to match mock data
-  const CENTER_COORD = [-74.0060, 40.7128]; 
+  // Default: Poconos / Tannersville — Crossings Premium Outlets & waterparks area
+  const CENTER_COORD: [number, number] = [-75.309, 41.044]; 
 
   return (
     <View style={styles.container}>
       <Mapbox.MapView 
         style={styles.map} 
-        styleURL={isDark ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Light}
-        logoEnabled={false}
+        styleURL={process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL || (isDark ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Light)}
+        logoEnabled={true}
         attributionEnabled={false}
         scaleBarEnabled={false}
+        pitchEnabled={true}
+        rotateEnabled={true}
       >
+        <Mapbox.Atmosphere
+          style={{
+            starIntensity: 0.2,
+            color: '#0a0a1a',
+            spaceColor: '#0a0a1a',
+          }}
+        />
         <Mapbox.Camera
-          zoomLevel={14}
           centerCoordinate={CENTER_COORD}
+          zoomLevel={17}
+          pitch={50}
+          heading={0}
           animationMode="flyTo"
           animationDuration={2000}
+          followUserLocation={true}
+          followUserMode={Mapbox.UserTrackingMode.FollowWithCourse}
+          followPitch={50}
+          minZoomLevel={10}
+          maxZoomLevel={19}
         />
-        
-        <Mapbox.UserLocation visible={true} showsUserHeadingIndicator={true} />
+        <Mapbox.LocationPuck
+          visible={true}
+          androidRenderMode="gps"
+          puckBearingEnabled={true}
+          puckBearing="heading"
+          pulsing={{
+            isEnabled: true,
+            color: '#3b82f6',
+            radius: 30,
+          }}
+        />
 
         {MOCK_PARTNERS.map((partner) => {
           // Safety check
@@ -96,6 +122,16 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: 'white',
-    opacity: 0.95
-  }
+    opacity: 0.95,
+  },
+  missionPin: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderWidth: 1,
+    borderColor: '#FBBF24',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

@@ -1,0 +1,48 @@
+rules_version = '2';
+// OrbTap Firestore rules. See docs/FIREBASE_CONFIG.md and docs/BUILD/SOCIAL_AND_SAFETY_DESIGN.md.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // User profile (username, discoverable) — owner write; readable when discoverable or by friends
+    match /users/{uid} {
+      allow read: if request.auth != null && (resource.data.discoverable == true || request.auth.uid == uid);
+      allow create, update, delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{uid}/friends/{friendUid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/friendRequestsSent/{targetUid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/friendRequestsReceived/{fromUid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Sphere chat — encrypted payloads; any authenticated user can read/write (decryption requires invite code)
+    match /spheres/{sphereId}/messages/{messageId} {
+      allow read, create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // Verification codes and rate limits — backend only (Cloud Functions)
+    match /verificationCodes/{docId} {
+      allow read, write: if false;
+    }
+    match /verificationRateLimit/{docId} {
+      allow read, write: if false;
+    }
+    // Remote redemption tokens — backend only (createRedemptionToken / redeemRemoteToken)
+    match /redemptionTokens/{tokenId} {
+      allow read, write: if false;
+    }
+    match /partners/{partnerId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    match /meta/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, Image } from 'react-native';
 import Svg, { Circle, Path, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import Animated, { 
   useSharedValue, 
@@ -13,6 +13,26 @@ import { COLORS } from '../constants/Colors';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/** Brand logo image (shield/OT) — use for wallet card, auth, directory, etc. */
+export const OrbTapLogoImage = ({
+  width = 80,
+  height,
+  style,
+}: {
+  width?: number;
+  height?: number;
+  style?: object;
+}) => {
+  const h = height ?? width * (120 / 100);
+  return (
+    <Image
+      source={require('../assets/images/icon.png')}
+      style={[{ width, height: h }, style]}
+      resizeMode="contain"
+    />
+  );
+};
 
 interface LogoProps {
   width?: number;
