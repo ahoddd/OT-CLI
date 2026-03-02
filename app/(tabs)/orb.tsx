@@ -1,7 +1,7 @@
 /**
- * OrbTap Orb Hub — Super Dashboard
- * Strategic command center for users and partners: identity, featured, do-next, categorized hub, quick actions, learn.
- * Designed to drive engagement, discovery, and business value in one scannable, premium experience.
+ * OrbTap Orb Hub — Sprint 12 "Mission Control" redesign.
+ * Premium dark aesthetic, OrbHeroPanel, QuickActionsBar, ritual-first order,
+ * live activity strip, upgrade CTA, frosted-glass category cards.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -20,6 +20,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  FadeInDown,
+} from 'react-native-reanimated';
 import MasterDirectory from '../../components/MasterDirectory';
 import { AllPagesGridModal } from '../../components/AllPagesGridModal';
 import { GuidedTutorialOverlay } from '../../components/GuidedTutorialOverlay';
@@ -38,7 +46,8 @@ import { FeaturedCarousel } from '../../components/FeaturedCarousel';
 import { useFeaturedPartners } from '../../hooks/useFeaturedPartners';
 import { SponsoredAdSlot } from '../../components/SponsoredAdSlot';
 import { OrbScopeCard } from '../../components/OrbScopeCard';
-import { CommandCenterHeader } from '../../components/CommandCenterHeader';
+import { OrbHeroPanel } from '../../components/OrbHeroPanel';
+import { QuickActionsBar } from '../../components/QuickActionsBar';
 import { useSearchOpen } from '../../context/SearchOpenContext';
 import { useWallet } from '../../hooks/useWallet';
 import { useXP } from '../../hooks/useXP';
@@ -62,20 +71,24 @@ import { DoNextStrip } from '../../components/DoNextStrip';
 import { TierGlow } from '../../components/TierGlow';
 import type { Partner } from '../../constants/MockData';
 import { useSocial } from '../../hooks/useSocial';
+import { usePulse } from '../../hooks/usePulse';
+import { useMissions, isMissionFullyComplete } from '../../context/MissionsContext';
 
 const FIRST_GRID_ENTRY_STORAGE_KEY = 'ORBTAP_FIRST_GRID_ENTRY_SHOWN';
 
-// ─── Hub tile definition: category, label, subLabel, icon, color, route, optional flag ───
+// ─── Hub tile definition ───
 const HUB_CATEGORIES: Array<{
   id: string;
   label: string;
   accent: string;
-  tiles: Array<{ id: string; label: string; subLabel: string; icon: string; color: string; route: string; flagKey?: FlagKey }>;
+  emoji: string;
+  tiles: Array<{ id: string; label: string; subLabel: string; icon: string; color: string; route: string; flagKey?: FlagKey; minTier?: 'premium' | 'pro' }>;
 }> = [
   {
     id: 'earn',
     label: 'Earn',
     accent: '#22C55E',
+    emoji: '⚡',
     tiles: [
       { id: 'pulse', label: 'OrbPulse', subLabel: 'Live drops', icon: 'pulse', color: '#4ADE80', route: '/pulse', flagKey: 'isOrbPulseEnabled' },
       { id: 'missions', label: 'Missions', subLabel: 'Daily OT', icon: 'flag', color: '#FBBF24', route: '/missions', flagKey: 'isOrbQuestEnabled' },
@@ -87,6 +100,7 @@ const HUB_CATEGORIES: Array<{
     id: 'discover',
     label: 'Discover',
     accent: '#0EA5E9',
+    emoji: '🗺️',
     tiles: [
       { id: 'map', label: 'Map', subLabel: 'Nearby', icon: 'map', color: '#22C55E', route: '/(tabs)' },
       { id: 'orbswipe', label: 'OrbSwipe Tonight', subLabel: ORBSWIPE_HUB_SUBLINE, icon: 'swap-horizontal', color: '#A78BFA', route: '/orbswipe', flagKey: 'isOrbSwipeEnabled' },
@@ -99,15 +113,17 @@ const HUB_CATEGORIES: Array<{
     id: 'compete',
     label: 'Compete',
     accent: '#A78BFA',
+    emoji: '🏆',
     tiles: [
       { id: 'leaderboard', label: 'Leaderboard', subLabel: 'Ranks', icon: 'trophy', color: '#A78BFA', route: '/leaderboard', flagKey: 'isLeaderboardEnabled' },
-      { id: 'orbsignal', label: 'Orb Signal', subLabel: 'Predict', icon: 'radio', color: '#EF4444', route: '/orbsignal', flagKey: 'isOrbSignalEnabled' },
+      { id: 'orbsignal', label: 'Orb Signal', subLabel: 'Predict', icon: 'radio', color: '#EF4444', route: '/orbsignal', flagKey: 'isOrbSignalEnabled', minTier: 'premium' },
     ],
   },
   {
     id: 'grow',
     label: 'Grow',
     accent: '#FBBF24',
+    emoji: '📈',
     tiles: [
       { id: 'stats', label: 'Stats', subLabel: 'Your impact', icon: 'stats-chart', color: '#22C55E', route: '/stats', flagKey: 'isStatsEnabled' },
       { id: 'knowledge', label: 'Knowledge', subLabel: 'Learn', icon: 'bulb', color: '#FBBF24', route: '/knowledge', flagKey: 'isKnowledgeEnabled' },
@@ -119,6 +135,7 @@ const HUB_CATEGORIES: Array<{
     id: 'go',
     label: 'Go',
     accent: '#60A5FA',
+    emoji: '🚀',
     tiles: [
       { id: 'scan', label: 'Scan', subLabel: 'Redeem', icon: 'qr-code', color: '#4ADE80', route: '/(tabs)/scan' },
       { id: 'wallet', label: 'Vault', subLabel: 'Balance', icon: 'wallet', color: '#EF4444', route: '/(tabs)/wallet', flagKey: 'isOrbWalletEnabled' },
@@ -141,12 +158,120 @@ function getDisplayName(email: string | null | undefined, displayName: string | 
   return 'there';
 }
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+/** Compact live-activity pill shown in the strip */
+function LivePill({ title, whyTrending, accent }: { title: string; whyTrending: string; accent: string }) {
+  return (
+    <View style={[liveStyles.pill, { backgroundColor: accent + '15', borderColor: accent + '40' }]}>
+      <View style={[liveStyles.dot, { backgroundColor: accent }]} />
+      <Text style={[liveStyles.pillName, { color: accent }]} numberOfLines={1}>{title}</Text>
+      <Text style={[liveStyles.pillSub, { color: 'rgba(255,255,255,0.5)' }]} numberOfLines={1}>{whyTrending}</Text>
+    </View>
+  );
 }
+
+const liveStyles = StyleSheet.create({
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 100,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  pillName: { fontSize: 12, fontWeight: '700', maxWidth: 100 },
+  pillSub: { fontSize: 10, fontWeight: '600', maxWidth: 120 },
+});
+
+/** Upgrade CTA card for free users */
+function UpgradeCTACard({ themeGold, onPress, colors }: { themeGold: string; onPress: () => void; colors: any }) {
+  const shimmerX = useSharedValue(-300);
+  useEffect(() => {
+    shimmerX.value = withRepeat(withTiming(400, { duration: 2500 }), -1, false);
+  }, []);
+  const shimmerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shimmerX.value }] }));
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [upgradeStyles.card, pressed && { opacity: 0.92 }]}
+    >
+      <LinearGradient
+        colors={['#1a1a2e', '#16213e', '#1a1200']}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <LinearGradient
+        colors={[themeGold + '30', '#A78BFA30', themeGold + '20']}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      {/* Shimmer */}
+      <Animated.View style={[upgradeStyles.shimmerWrap, shimmerStyle]} pointerEvents="none">
+        <LinearGradient
+          colors={['transparent', 'rgba(255,255,255,0.06)', 'transparent']}
+          style={upgradeStyles.shimmerGrad}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+        />
+      </Animated.View>
+      <View style={upgradeStyles.inner}>
+        <View style={upgradeStyles.headerRow}>
+          <View style={[upgradeStyles.iconWrap, { backgroundColor: themeGold + '25' }]}>
+            <Ionicons name="diamond" size={20} color={themeGold} />
+          </View>
+          <View style={upgradeStyles.textBlock}>
+            <Text style={[upgradeStyles.title, { color: '#fff' }]}>Unlock OrbTap Premium</Text>
+            <Text style={[upgradeStyles.sub, { color: 'rgba(255,255,255,0.6)' }]}>Everything you need to dominate the leaderboard</Text>
+          </View>
+        </View>
+        <View style={upgradeStyles.bullets}>
+          {[
+            { icon: 'flash', text: 'Early drop access · First in line' },
+            { icon: 'trending-up', text: '1.2× OT multiplier on every scan' },
+            { icon: 'ticket', text: 'OrbPass monthly perks at partners' },
+          ].map((b) => (
+            <View key={b.text} style={upgradeStyles.bulletRow}>
+              <Ionicons name={b.icon as any} size={13} color={themeGold} />
+              <Text style={upgradeStyles.bulletText}>{b.text}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={[upgradeStyles.ctaBtn, { backgroundColor: themeGold }]}>
+          <Text style={upgradeStyles.ctaBtnText}>Upgrade now →</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+const upgradeStyles = StyleSheet.create({
+  card: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 16,
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.25)',
+  },
+  shimmerWrap: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 200 },
+  shimmerGrad: { width: 200, height: '100%' },
+  inner: { padding: 18 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  textBlock: { flex: 1, minWidth: 0 },
+  title: { fontSize: 16, fontWeight: '900', marginBottom: 2 },
+  sub: { fontSize: 12, fontWeight: '500' },
+  bullets: { gap: 8, marginBottom: 16 },
+  bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  bulletText: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600', flex: 1 },
+  ctaBtn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  ctaBtnText: { color: '#000', fontSize: 15, fontWeight: '900' },
+});
 
 export default function OrbHubScreen() {
   const [dirVisible, setDirVisible] = useState(false);
@@ -174,7 +299,7 @@ export default function OrbHubScreen() {
   const { streak } = useStreak();
   const { daily: orbScopeDaily, streak: orbScopeStreak, recordView: orbScopeRecordView, loading: orbScopeLoading } = useOrbScope();
   const orbScopeEnabled = Boolean(flags.isOrbScopeEnabled && prefs.orbScopeEnabled);
-  const { getFeaturedPartner, getGridPartnersOrdered, partners, getPerksForPartner } = usePartners();
+  const { getFeaturedPartner, getGridPartnersOrdered, partners, getActivePerksForPartner } = usePartners();
   const { myPartner } = useMyPartner();
   const { tier: effectiveTier, isPartner } = useEffectiveTier();
   const featuredPartner = getFeaturedPartner();
@@ -193,7 +318,7 @@ export default function OrbHubScreen() {
   const partnerAccount = isPartner && (myPartner ?? partners[0] ?? null);
   const partnerTierColor = partnerAccount ? PARTNER_TIER_COLORS[partnerAccount.tier] : null;
   const { slides: featuredSlides, loading: featuredLoading } = useFeaturedPartners();
-  const { displayName: profileDisplayName, username: profileUsername, refresh: refreshProfile } = useCurrentUserProfile();
+  const { displayName: profileDisplayName, refresh: refreshProfile } = useCurrentUserProfile();
   const { balance } = useWallet();
   const rank = useXP();
   const displayName = profileDisplayName?.trim() || getDisplayName(user?.email ?? null, user?.displayName ?? null);
@@ -201,10 +326,14 @@ export default function OrbHubScreen() {
   const displayStreak = completedStreakCount ?? streak.currentStreak;
   const { followingIds } = useSocial();
   const followedPartners = partners.filter((p) => followingIds.includes(p.id));
+  const { liveTiles } = usePulse();
+  const { todayMissions } = useMissions();
+  const activeMissionCount = todayMissions.filter((m) => !isMissionFullyComplete(m)).length;
 
   useEffect(() => {
     if (shouldShowTutorial('orb')) setShowOrbTutorial(true);
   }, [shouldShowTutorial]);
+
   useFocusEffect(
     useCallback(() => {
       refreshProfile();
@@ -214,13 +343,13 @@ export default function OrbHubScreen() {
           AsyncStorage.removeItem('ORBTAP_SHOW_FIRST_ORB_PROMPT').catch(() => {});
         }
       });
-      // First-time Grid entry modal (once per user, after onboarding)
       if (!user || !prefs.onboardingComplete) return;
       AsyncStorage.getItem(FIRST_GRID_ENTRY_STORAGE_KEY).then((v) => {
         if (v !== '1') setShowFirstGridEntryModal(true);
       });
-    }, [refreshProfile, user, prefs.onboardingComplete])
+    }, [refreshProfile, user, prefs.onboardingComplete]),
   );
+
   React.useEffect(() => {
     if (!directoryOpen) return;
     return directoryOpen.registerOpen(() => setDirVisible(true));
@@ -244,6 +373,12 @@ export default function OrbHubScreen() {
     const name = layout.getDisplayName(key, defaultLabel);
     if (tileId === 'orbswipe') return name + ' Tonight';
     return name;
+  };
+
+  const tierMeetsTile = (required?: 'premium' | 'pro'): boolean => {
+    if (!required) return true;
+    if (required === 'premium') return effectiveTier === 'premium' || effectiveTier === 'pro';
+    return effectiveTier === 'pro';
   };
 
   return (
@@ -270,24 +405,25 @@ export default function OrbHubScreen() {
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
         >
-          {/* ─── 1. HERO: Identity, balance, search, directory ─── */}
-          <CommandCenterHeader
+          {/* ① OrbHeroPanel — identity, balance, streak, tier */}
+          <OrbHeroPanel
             colors={colors}
+            isDark={isDark}
             balance={balance}
             displayName={displayName}
-            profileUsername={profileUsername}
-            sloganText="What to do today? Start here."
-            hintText="Deals nearby · Missions · Scan to earn OT"
-            searchOpen={searchOpen}
-            onNav={handleNav}
-            onOpenDir={() => setDirVisible(true)}
             level={rank.level}
             levelTitle={rank.title}
-            tier={effectiveTier}
+            streak={displayStreak}
+            tier={effectiveTier as 'free' | 'premium' | 'pro'}
             isPartner={isPartner}
+            ritualDone={isRitualDoneToday}
+            ritualPoints={ritualPointsEarnedToday}
+            themeGold={themeGold}
+            onOpenSearch={searchOpen?.openSearch}
+            onOpenDir={() => setDirVisible(true)}
           />
 
-          {/* ─── Partner command hero: prominent entry for partner accounts ─── */}
+          {/* ② Partner command hero (partner accounts only) */}
           {partnerAccount && partnerTierColor && (
             <TierGlow tier={partnerAccount.tier} style={styles.partnerHeroCardWrap}>
               <Pressable
@@ -316,97 +452,30 @@ export default function OrbHubScreen() {
             </TierGlow>
           )}
 
-          {/* ─── 2. FEATURED: Partner carousel — value for businesses & discovery ─── */}
-          {!featuredLoading && featuredSlides.length > 0 ? (
-            <View style={styles.block}>
-              <View style={styles.sectionHead}>
-                <View style={[styles.sectionAccent, { backgroundColor: themeGold }]} />
-                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>FEATURED FOR YOU</Text>
-              </View>
-              <FeaturedCarousel slides={featuredSlides} />
-            </View>
-          ) : featuredPartner ? (
-            <View style={styles.block}>
-              <View style={styles.sectionHead}>
-                <View style={[styles.sectionAccent, { backgroundColor: themeGold }]} />
-                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>FEATURED FOR YOU</Text>
-              </View>
-              <FeaturedPartnerCard partner={featuredPartner} />
-            </View>
-          ) : null}
-
-          {/* Sponsored — right below featured; always visible (carousel or premium placeholder) */}
-          <View style={styles.block}>
-            <SponsoredAdSlot placement="orb_carousel" sectionTitle="SPONSORED" />
-          </View>
-
-          {/* FOLLOWING — activity from partners you follow */}
-          {followedPartners.length > 0 && (
-            <View style={styles.block}>
-              <View style={styles.sectionHead}>
-                <View style={[styles.sectionAccent, { backgroundColor: '#A78BFA' }]} />
-                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-                  PARTNERS YOU FOLLOW
-                </Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.followingRow}
-              >
-                {followedPartners.map((fp) => {
-                  const fpPerks = getPerksForPartner(fp.id);
-                  const topPerk = fpPerks[0] ?? null;
-                  const fpColor = PARTNER_TIER_COLORS[fp.tier];
-                  return (
-                    <TouchableOpacity
-                      key={fp.id}
-                      style={[styles.followCard, { backgroundColor: colors.surface, borderColor: fpColor + '55', borderLeftColor: fpColor }]}
-                      onPress={() => { safeHaptics.selectionAsync(); router.push(`/partner/${fp.id}` as any); }}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={[styles.followCardName, { color: colors.text }]} numberOfLines={1}>{fp.name}</Text>
-                      {topPerk ? (
-                        <Text style={[styles.followCardPerk, { color: fpColor }]} numberOfLines={1}>
-                          {topPerk.title} · {topPerk.cost} pts
-                        </Text>
-                      ) : (
-                        <Text style={[styles.followCardPerk, { color: colors.textSecondary }]}>No active perks</Text>
-                      )}
-                      <Ionicons name="heart" size={11} color={fpColor} style={{ marginTop: 4 }} />
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* ─── 3. DO NEXT: One primary action — ritual, daily vibe, or CTA ─── */}
+          {/* ③ Daily Ritual Block — ABOVE featured for emotional engagement */}
           {flags.ritualDailyOrbEnabled && (
-            <View style={[styles.doNextCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.ritualBlock, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.sectionHead}>
                 <View style={[styles.sectionAccent, { backgroundColor: themeGold }]} />
-                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>DO NEXT</Text>
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>DAILY RITUAL</Text>
               </View>
               {isRitualDoneToday ? (
-                <View style={[styles.doneStrip, styles.doneStripCompact, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <LinearGradient colors={[themeGold, '#b45309']} style={styles.doneIconCompact}>
+                <View style={[styles.doneStrip, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <LinearGradient colors={[themeGold, '#b45309']} style={styles.doneIconWrap}>
                     <Ionicons name="checkmark-circle" size={16} color="#fff" />
                   </LinearGradient>
                   <View style={styles.doneTextWrap}>
-                    <Text style={[styles.doneTitle, styles.doneTitleCompact, { color: colors.text }]}>Daily ritual done</Text>
+                    <Text style={[styles.doneTitle, { color: colors.text }]}>Daily ritual done</Text>
                     {ritualPointsEarnedToday != null && ritualPointsEarnedToday > 0 && (
-                      <Text style={[styles.donePointsEarned, { color: themeGold }]} numberOfLines={1}>
-                        +{ritualPointsEarnedToday} OT earned
-                      </Text>
+                      <Text style={[styles.donePoints, { color: themeGold }]}>+{ritualPointsEarnedToday} OT earned</Text>
                     )}
-                    <Text style={[styles.doneSub, styles.doneSubCompact, { color: colors.textSecondary }]} numberOfLines={1}>
+                    <Text style={[styles.doneSub, { color: colors.textSecondary }]} numberOfLines={1}>
                       {displayStreak} day streak · See you again tomorrow!
                     </Text>
                   </View>
                 </View>
               ) : (
-                <View style={styles.orbWrapCompact}>
+                <View style={styles.orbWrap}>
                   <DailyStreakOrb
                     compact
                     onRitualComplete={(count, points) => {
@@ -420,6 +489,31 @@ export default function OrbHubScreen() {
             </View>
           )}
 
+          {/* ④ QuickActionsBar — one tap to the 4 most-used actions */}
+          <QuickActionsBar
+            onPress={handleNav}
+            missionCount={activeMissionCount}
+            colors={colors}
+          />
+
+          {/* ⑤ Live Activity Strip — social proof from usePulse */}
+          {flags.isOrbPulseEnabled && liveTiles.length > 0 && (
+            <Animated.View entering={FadeInDown.duration(350)} style={styles.liveBlock}>
+              <View style={styles.sectionHead}>
+                <View style={[styles.liveDot, { backgroundColor: '#4ADE80' }]} />
+                <Text style={[styles.sectionLabel, { color: '#4ADE80' }]}>LIVE NOW</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.liveRow}>
+                {liveTiles.map((tile) => (
+                  <TouchableOpacity key={tile.id} onPress={() => handleNav(tile.type === 'drop' ? `/drop/${tile.entityId}` : `/partner/${tile.entityId}`)}>
+                    <LivePill title={tile.title} whyTrending={tile.whyTrending} accent="#4ADE80" />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Animated.View>
+          )}
+
+          {/* ⑥ Smart Do-Next: OrbScope daily vibe or nearest partner scan CTA */}
           {orbScopeEnabled && !orbScopeDismissed && !orbScopeLoading && orbScopeDaily && (
             <View style={[styles.orbScopeCardWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={[styles.orbScopeHeader, { borderColor: colors.border }]}>
@@ -448,7 +542,6 @@ export default function OrbHubScreen() {
             </View>
           )}
 
-          {/* Do next: Scan at nearest partner — when OrbScope dismissed or no daily vibe */}
           {!isPartner && nearestPartner && (orbScopeDismissed || !orbScopeEnabled || !orbScopeDaily) && (
             <DoNextStrip
               type="scan"
@@ -458,10 +551,75 @@ export default function OrbHubScreen() {
             />
           )}
 
-          {/* ─── 4. HUB: Categorized dashboard — Earn, Discover, Compete, Grow, Go ─── */}
+          {/* ⑦ Featured Carousel — partner discovery */}
+          {!featuredLoading && featuredSlides.length > 0 ? (
+            <View style={styles.block}>
+              <View style={styles.sectionHead}>
+                <View style={[styles.sectionAccent, { backgroundColor: themeGold }]} />
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>FEATURED FOR YOU</Text>
+              </View>
+              <FeaturedCarousel slides={featuredSlides} />
+            </View>
+          ) : featuredPartner ? (
+            <View style={styles.block}>
+              <View style={styles.sectionHead}>
+                <View style={[styles.sectionAccent, { backgroundColor: themeGold }]} />
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>FEATURED FOR YOU</Text>
+              </View>
+              <FeaturedPartnerCard partner={featuredPartner} />
+            </View>
+          ) : null}
+
+          {/* ⑧ Sponsored */}
+          <View style={styles.block}>
+            <SponsoredAdSlot placement="orb_carousel" sectionTitle="SPONSORED" />
+          </View>
+
+          {/* ⑨ Following strip */}
+          {followedPartners.length > 0 && (
+            <View style={styles.block}>
+              <View style={styles.sectionHead}>
+                <View style={[styles.sectionAccent, { backgroundColor: '#A78BFA' }]} />
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                  PARTNERS YOU FOLLOW
+                </Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.followingRow}
+              >
+                {followedPartners.map((fp) => {
+                  const fpPerks = getActivePerksForPartner(fp.id);
+                  const topPerk = fpPerks[0] ?? null;
+                  const fpColor = PARTNER_TIER_COLORS[fp.tier];
+                  return (
+                    <TouchableOpacity
+                      key={fp.id}
+                      style={[styles.followCard, { backgroundColor: colors.surface, borderColor: fpColor + '55', borderLeftColor: fpColor }]}
+                      onPress={() => { safeHaptics.selectionAsync(); router.push(`/partner/${fp.id}` as any); }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.followCardName, { color: colors.text }]} numberOfLines={1}>{fp.name}</Text>
+                      {topPerk ? (
+                        <Text style={[styles.followCardPerk, { color: fpColor }]} numberOfLines={1}>
+                          {topPerk.title} · {topPerk.cost} pts
+                        </Text>
+                      ) : (
+                        <Text style={[styles.followCardPerk, { color: colors.textSecondary }]}>No active perks</Text>
+                      )}
+                      <Ionicons name="heart" size={11} color={fpColor} style={{ marginTop: 4 }} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* ⑩ Hub Category Cards — frosted-glass category headers with dense tile grids */}
           <View style={[styles.hubCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <LinearGradient
-              colors={[(colors.primary) + '12', 'transparent', (themeGold) + '08']}
+              colors={[colors.primary + '10', 'transparent', themeGold + '07']}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -470,7 +628,7 @@ export default function OrbHubScreen() {
               <View style={styles.hubTitleRow}>
                 <View style={styles.hubTitleBlock}>
                   <Text style={[styles.hubTitle, { color: colors.text }]}>{layout.getDisplayName('screen_orb_hub_title', 'Your Hub')}</Text>
-                  <Text style={[styles.hubSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>Tap a tile or see all pages.</Text>
+                  <Text style={[styles.hubSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>Tap any tile · see all pages →</Text>
                 </View>
                 <TouchableOpacity
                   style={[styles.hubAllPagesBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
@@ -481,6 +639,8 @@ export default function OrbHubScreen() {
                   <Text style={[styles.hubAllPagesLabel, { color: colors.text }]}>All pages</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Categories as frosted-glass cards */}
               {HUB_CATEGORIES.map((cat) => {
                 const visibleTiles = cat.tiles.filter((t) => {
                   if (t.id === 'admin') return isAdminEmail(user?.email);
@@ -488,28 +648,45 @@ export default function OrbHubScreen() {
                 });
                 if (visibleTiles.length === 0) return null;
                 return (
-                  <View key={cat.id} style={styles.hubCategory}>
-                    <View style={[styles.hubCategoryLabelWrap, { borderLeftColor: cat.accent }]}>
-                      <Text style={[styles.hubCategoryLabel, { color: colors.text }]}>{cat.label}</Text>
+                  <View
+                    key={cat.id}
+                    style={[styles.catCard, { borderColor: cat.accent + '28', backgroundColor: cat.accent + '08' }]}
+                  >
+                    {/* Category header */}
+                    <View style={[styles.catHeader, { borderLeftColor: cat.accent }]}>
+                      <Text style={styles.catEmoji}>{cat.emoji}</Text>
+                      <Text style={[styles.catLabel, { color: cat.accent }]}>{cat.label}</Text>
                     </View>
+                    {/* Tile grid */}
                     <View style={styles.hubTilesRow}>
-                      {visibleTiles.map((tile) => (
-                        <Pressable
-                          key={tile.id}
-                          style={({ pressed }) => [
-                            styles.hubTile,
-                            { backgroundColor: colors.background, borderColor: colors.border },
-                            pressed && styles.hubTilePressed,
-                          ]}
-                          onPress={() => handleNav(tile.route)}
-                        >
-                          <View style={[styles.hubTileIcon, { backgroundColor: tile.color + (isDark ? '28' : '18') }]}>
-                            <Ionicons name={tile.icon as any} size={20} color={tile.color} />
-                          </View>
-                          <Text style={[styles.hubTileLabel, { color: colors.text }]} numberOfLines={1}>{getHubTileLabel(tile.id, tile.label)}</Text>
-                          <Text style={[styles.hubTileSub, { color: colors.textSecondary }]} numberOfLines={1}>{tile.subLabel}</Text>
-                        </Pressable>
-                      ))}
+                      {visibleTiles.map((tile) => {
+                        const isLocked = !tierMeetsTile(tile.minTier);
+                        return (
+                          <Pressable
+                            key={tile.id}
+                            style={({ pressed }) => [
+                              styles.hubTile,
+                              { backgroundColor: colors.background, borderColor: isLocked ? colors.border + '80' : colors.border },
+                              pressed && styles.hubTilePressed,
+                              isLocked && { opacity: 0.7 },
+                            ]}
+                            onPress={() => handleNav(tile.route)}
+                          >
+                            {isLocked && (
+                              <View style={styles.hubTileLockBadge}>
+                                <Ionicons name="lock-closed" size={9} color={themeGold} />
+                              </View>
+                            )}
+                            <View style={[styles.hubTileIcon, { backgroundColor: tile.color + (isDark ? '28' : '18') }]}>
+                              <Ionicons name={tile.icon as any} size={18} color={tile.color} />
+                            </View>
+                            <Text style={[styles.hubTileLabel, { color: colors.text }]} numberOfLines={1}>
+                              {getHubTileLabel(tile.id, tile.label)}
+                            </Text>
+                            <Text style={[styles.hubTileSub, { color: colors.textSecondary }]} numberOfLines={1}>{tile.subLabel}</Text>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   </View>
                 );
@@ -517,7 +694,18 @@ export default function OrbHubScreen() {
             </View>
           </View>
 
-          {/* ─── 5. LEARN: Knowledge + Spheres CTA ─── */}
+          {/* ⑪ OrbScope card already rendered above if enabled */}
+
+          {/* ⑫ Upgrade CTA — for free users only */}
+          {effectiveTier === 'free' && !isPartner && (
+            <UpgradeCTACard
+              themeGold={themeGold}
+              onPress={() => handleNav('/premium')}
+              colors={colors}
+            />
+          )}
+
+          {/* ⑬ Learn — DailyFactCard */}
           {flags.isKnowledgeEnabled && (
             <View style={[styles.blockCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.sectionHead}>
@@ -550,7 +738,7 @@ export default function OrbHubScreen() {
       </SafeAreaView>
 
       <Modal visible={showFirstOrbModal} transparent animationType="fade">
-        <Pressable style={styles.firstOrbModalOverlay} onPress={() => setShowFirstOrbModal(false)}>
+        <Pressable style={[styles.firstOrbModalOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.4)' }]} onPress={() => setShowFirstOrbModal(false)}>
           <Pressable style={[styles.firstOrbModalBox, { backgroundColor: colors.surface }]} onPress={(e) => e.stopPropagation()}>
             <View style={[styles.firstOrbModalIconWrap, { backgroundColor: COLORS.neonBlue[0] + '22' }]}>
               <Ionicons name="map" size={40} color={COLORS.neonBlue[0]} />
@@ -575,16 +763,59 @@ export default function OrbHubScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 12 },
-  bottomPad: { height: 100 },
-  firstOrbModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  firstOrbModalBox: { borderRadius: 20, padding: 28, width: '100%', maxWidth: 340, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  firstOrbModalIconWrap: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  firstOrbModalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
-  firstOrbModalSub: { fontSize: 14, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
-  firstOrbModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 14, width: '100%' },
-  firstOrbModalBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 0 },
+  bottomPad: { height: 120 },
   block: { marginBottom: 16 },
+  blockCard: {
+    marginBottom: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    padding: 14,
+  },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  sectionAccent: { width: 4, height: 14, borderRadius: 2, marginRight: 8 },
+  sectionLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  // Ritual block
+  ritualBlock: {
+    marginBottom: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+    padding: 10,
+  },
+  orbWrap: { alignSelf: 'center' },
+  doneStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  doneIconWrap: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  doneTextWrap: { flex: 1, minWidth: 0 },
+  doneTitle: { fontSize: 13, fontWeight: '800' },
+  donePoints: { fontSize: 12, fontWeight: '800', marginTop: 2 },
+  doneSub: { fontSize: 11, fontWeight: '600', marginTop: 1, opacity: 0.85 },
+  // Live strip
+  liveBlock: { marginBottom: 12 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  liveRow: { paddingBottom: 4 },
+  // OrbScope
+  orbScopeCardWrap: {
+    marginBottom: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingTop: 4,
+    paddingBottom: 6,
+  },
+  orbScopeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingBottom: 4, borderBottomWidth: 1 },
+  orbScopeTitleBlock: { flex: 1, minWidth: 0, marginRight: 8 },
+  orbScopeExplain: { fontSize: 10, fontWeight: '600', marginTop: 2, opacity: 0.9 },
+  // Partner hero
   partnerHeroCardWrap: { marginBottom: 14, overflow: 'visible', borderRadius: 16 },
   partnerHeroCard: {
     flexDirection: 'row',
@@ -599,42 +830,7 @@ const styles = StyleSheet.create({
   partnerHeroText: { flex: 1, minWidth: 0 },
   partnerHeroTitle: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
   partnerHeroSub: { fontSize: 12, fontWeight: '600' },
-  blockCard: {
-    marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    padding: 14,
-  },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  sectionHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  sectionAccent: { width: 4, height: 14, borderRadius: 2, marginRight: 8 },
-  sectionLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
-  doNextCard: {
-    marginBottom: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: 'hidden',
-    padding: 10,
-  },
-  orbWrapCompact: { alignSelf: 'center' },
-  doneStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 12,
-  },
-  doneStripCompact: { padding: 8, gap: 8 },
-  doneIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  doneIconCompact: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  doneTextWrap: { flex: 1, minWidth: 0 },
-  doneTitle: { fontSize: 15, fontWeight: '800' },
-  doneTitleCompact: { fontSize: 13 },
-  donePointsEarned: { fontSize: 12, fontWeight: '800', marginTop: 2 },
-  doneSub: { fontSize: 12, fontWeight: '600', marginTop: 2, opacity: 0.85 },
-  doneSubCompact: { fontSize: 11, marginTop: 1 },
+  // Hub card
   hubCard: {
     marginBottom: 16,
     borderRadius: 14,
@@ -644,7 +840,7 @@ const styles = StyleSheet.create({
   },
   hubCardInner: { padding: 12 },
   hubTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 10 },
-  hubTitleBlock: { flex: 1, minWidth: 0, marginRight: 8 },
+  hubTitleBlock: { flex: 1, minWidth: 0 },
   hubTitle: { fontSize: 16, fontWeight: '900', letterSpacing: -0.2, marginBottom: 2 },
   hubSubtitle: { fontSize: 11, fontWeight: '600', opacity: 0.9 },
   hubAllPagesBtn: {
@@ -657,35 +853,63 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   hubAllPagesLabel: { fontSize: 11, fontWeight: '700' },
-  hubCategory: { marginBottom: 10 },
-  hubCategoryLabelWrap: { borderLeftWidth: 3, paddingLeft: 6, marginBottom: 6 },
-  hubCategoryLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.2 },
+  // Category cards
+  catCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  catHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderLeftWidth: 4,
+    paddingLeft: 8,
+    marginBottom: 10,
+  },
+  catEmoji: { fontSize: 14 },
+  catLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  // Tiles inside categories
   hubTilesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   hubTile: {
     width: '30%',
-    minWidth: 88,
+    minWidth: 80,
     paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
+    position: 'relative',
+  },
+  hubTileLockBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   hubTilePressed: { opacity: 0.85 },
-  hubTileIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  hubTileIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   hubTileLabel: { fontSize: 10, fontWeight: '800', marginBottom: 1 },
   hubTileSub: { fontSize: 9, fontWeight: '600', opacity: 0.9 },
-  orbScopeCardWrap: {
-    marginBottom: 10,
+  // Following
+  followingRow: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
+  followCard: {
+    width: 140,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    paddingTop: 4,
-    paddingBottom: 6,
+    borderLeftWidth: 3,
   },
-  orbScopeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingBottom: 4, borderBottomWidth: 1 },
-  orbScopeTitleBlock: { flex: 1, minWidth: 0, marginRight: 8 },
-  orbScopeExplain: { fontSize: 10, fontWeight: '600', marginTop: 2, opacity: 0.9 },
+  followCardName: { fontSize: 13, fontWeight: '700', marginBottom: 3 },
+  followCardPerk: { fontSize: 11, fontWeight: '500' },
+  // Spheres CTA
   spheresCta: {
     marginBottom: 16,
     borderRadius: 18,
@@ -698,14 +922,12 @@ const styles = StyleSheet.create({
   spheresCtaText: { flex: 1, minWidth: 0 },
   spheresCtaTitle: { color: '#fff', fontSize: 17, fontWeight: '900', letterSpacing: 0.3 },
   spheresCtaSub: { color: 'rgba(255,255,255,0.92)', fontSize: 12, fontWeight: '600', marginTop: 4, lineHeight: 16 },
-  followingRow: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
-  followCard: {
-    width: 140,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderLeftWidth: 3,
-  },
-  followCardName: { fontSize: 13, fontWeight: '700', marginBottom: 3 },
-  followCardPerk: { fontSize: 11, fontWeight: '500' },
+  // First orb modal
+  firstOrbModalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  firstOrbModalBox: { borderRadius: 20, padding: 28, width: '100%', maxWidth: 340, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  firstOrbModalIconWrap: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  firstOrbModalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  firstOrbModalSub: { fontSize: 14, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
+  firstOrbModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 14, width: '100%' },
+  firstOrbModalBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
 });
