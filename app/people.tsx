@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,22 +6,31 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 import { COLORS } from '../constants/Colors';
+import { SPACE } from '../constants/DesignTokens';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../context/AuthContext';
 import { useFriends, type FriendRequest } from '../hooks/useFriends';
-import * as Haptics from 'expo-haptics';
+import { safeHaptics, Haptics } from '../utils/safeHaptics';
+import { SearchOverlay } from '../components/SearchOverlay';
+import { GuidedTutorialOverlay } from '../components/GuidedTutorialOverlay';
+import { useTutorial } from '../context/TutorialContext';
+import { alert as alertDialog, showErrorAlert } from '../utils/alert';
 
 export default function PeopleScreen() {
   const router = useRouter();
   const { colors } = useTheme();
-  const { user } = useAuth();
+  const themeGold = colors.gold ?? COLORS.gold[0];
+  const { user, loading: authLoading } = useAuth();
+  const { shouldShowTutorial, markCompleted, setSkipAllTutorials } = useTutorial();
+  const [showPeopleTutorial, setShowPeopleTutorial] = useState(false);
   const {
     friends,
     requestsReceived,
@@ -34,15 +43,65 @@ export default function PeopleScreen() {
   } = useFriends();
   const [searchUid, setSearchUid] = useState('');
   const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [friendProfiles, setFriendProfiles] = useState<Record<string, { displayName: string | null; username: string | null }>>({});
+
+  React.useEffect(() => {
+    if (shouldShowTutorial('people')) setShowPeopleTutorial(true);
+  }, [shouldShowTutorial]);
+
+  useEffect(() => {
+    if (!user || friends.length === 0) {
+      setFriendProfiles({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const next: Record<string, { displayName: string | null; username: string | null }> = {};
+      await Promise.all(
+        friends.map(async (uid) => {
+          if (cancelled) return;
+          try {
+            const snap = await getDoc(doc(db, 'users', uid));
+            const d = snap.data();
+            next[uid] = {
+              displayName: (d?.displayName as string) ?? null,
+              username: (d?.username as string) ?? null,
+            };
+          } catch {
+            next[uid] = { displayName: null, username: null };
+          }
+        })
+      );
+      if (!cancelled) setFriendProfiles((prev) => ({ ...prev, ...next }));
+    })();
+    return () => { cancelled = true; };
+  }, [user?.uid, friends.join(',')]);
+
+  const handleSelectMemberFromSearch = useCallback(
+    async (selected: { uid: string; displayName: string | null; username: string | null }) => {
+      setSearchVisible(false);
+      setSendingTo(selected.uid);
+      const result = await sendRequest(selected.uid);
+      setSendingTo(null);
+      if (result.ok) {
+        safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        alertDialog('Sent', `Friend request sent to ${selected.displayName || selected.username || selected.uid}.`, [{ text: 'OK' }]);
+      } else {
+        showErrorAlert('Request didn’t send', result.message ?? 'We couldn’t send the friend request. Please try again.');
+      }
+    },
+    [sendRequest]
+  );
 
   const handleAccept = async (req: FriendRequest) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const result = await acceptRequest(req.fromUid);
-    if (!result.ok) Alert.alert('Error', result.message ?? 'Could not accept');
+    if (!result.ok) showErrorAlert('Request didn’t complete', result.message ?? 'We couldn’t accept the request. Please try again.');
   };
 
   const handleDecline = async (req: FriendRequest) => {
-    Haptics.selectionAsync();
+    safeHaptics.selectionAsync();
     await declineRequest(req.fromUid);
   };
 
@@ -53,13 +112,32 @@ export default function PeopleScreen() {
     const result = await sendRequest(uid);
     setSendingTo(null);
     if (result.ok) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Sent', 'Friend request sent.');
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      alertDialog('Sent', 'Friend request sent.', [{ text: 'OK' }]);
       setSearchUid('');
     } else {
-      Alert.alert('Could not send', result.message ?? 'Try again.');
+      showErrorAlert('Request didn’t send', result.message ?? 'We couldn’t send the friend request. Please try again.');
     }
   };
+
+  if (authLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView edges={['top']} style={styles.safe}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>People</Text>
+            <View style={styles.headerSearchBtn} />
+          </View>
+          <View style={styles.loadWrap}>
+            <ActivityIndicator size="large" color={COLORS.neonBlue[0]} />
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   if (!user) {
     return (
@@ -70,8 +148,22 @@ export default function PeopleScreen() {
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text }]}>People</Text>
-            <View style={{ width: 40 }} />
+            <TouchableOpacity style={styles.headerSearchBtn} onPress={() => setSearchVisible(true)} hitSlop={12}>
+              <Ionicons name="search" size={22} color={colors.text} />
+            </TouchableOpacity>
           </View>
+          <SearchOverlay
+            visible={searchVisible}
+            onClose={() => setSearchVisible(false)}
+            defaultScope="members"
+            onSelectMember={undefined}
+          />
+          <GuidedTutorialOverlay
+            visible={showPeopleTutorial}
+            tutorialId="people"
+            onClose={() => { markCompleted('people'); setShowPeopleTutorial(false); }}
+            onSkipAll={() => { setSkipAllTutorials(); setShowPeopleTutorial(false); }}
+          />
           <View style={styles.placeholder}>
             <Ionicons name="people" size={64} color={colors.textSecondary} />
             <Text style={[styles.placeholderTitle, { color: colors.text }]}>Sign in to see People</Text>
@@ -93,8 +185,23 @@ export default function PeopleScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>People</Text>
-          <View style={{ width: 40 }} />
+          <TouchableOpacity style={styles.headerSearchBtn} onPress={() => setSearchVisible(true)} hitSlop={12}>
+            <Ionicons name="search" size={22} color={colors.text} />
+          </TouchableOpacity>
         </View>
+
+        <SearchOverlay
+          visible={searchVisible}
+          onClose={() => setSearchVisible(false)}
+          defaultScope="members"
+          onSelectMember={handleSelectMemberFromSearch}
+        />
+        <GuidedTutorialOverlay
+          visible={showPeopleTutorial}
+          tutorialId="people"
+          onClose={() => { markCompleted('people'); setShowPeopleTutorial(false); }}
+          onSkipAll={() => { setSkipAllTutorials(); setShowPeopleTutorial(false); }}
+        />
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -133,27 +240,51 @@ export default function PeopleScreen() {
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>FRIENDS ({friends.length})</Text>
                 {friends.length === 0 ? (
-                  <Text style={[styles.empty, { color: colors.textSecondary }]}>No friends yet. Add by UID below or from Leaderboard / Sphere.</Text>
+                  <View style={[styles.emptyFriends, { backgroundColor: COLORS.neonBlue[0] + '0C', borderColor: COLORS.neonBlue[0] + '30' }]}>
+                    <Ionicons name="people-outline" size={40} color={colors.textSecondary} />
+                    <Text style={[styles.emptyFriendsTitle, { color: colors.text }]}>No connections yet</Text>
+                    <Text style={[styles.emptyFriendsSub, { color: colors.textSecondary }]}>
+                      Invite friends or search for users to build your network.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => router.push('/invite' as any)}
+                      style={[styles.inviteBtn, { backgroundColor: COLORS.neonBlue[0] }]}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.inviteBtnText}>Invite friends</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
-                  friends.map((uid) => (
-                    <View key={uid} style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                      <View style={[styles.avatar, { backgroundColor: COLORS.gold[0] + '30' }]}>
-                        <Text style={[styles.avatarText, { color: COLORS.gold[0] }]}>{uid.slice(0, 1).toUpperCase()}</Text>
+                  friends.map((uid) => {
+                    const profile = friendProfiles[uid];
+                    const label = profile?.displayName || profile?.username || uid.slice(0, 12);
+                    const sub = profile?.username ? `@${profile.username}` : (profile?.displayName ? uid.slice(0, 8) : null);
+                    return (
+                      <View key={uid} style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View style={[styles.avatar, { backgroundColor: themeGold + '30' }]}>
+                          <Text style={[styles.avatarText, { color: themeGold }]}>{label.slice(0, 1).toUpperCase()}</Text>
+                        </View>
+                        <View style={styles.rowBody}>
+                          <Text style={[styles.rowName, { color: colors.text }]}>{label}</Text>
+                          {sub ? <Text style={[styles.rowHandle, { color: colors.textSecondary }]}>{sub}</Text> : null}
+                        </View>
                       </View>
-                      <Text style={[styles.rowName, { color: colors.text }]}>{uid}</Text>
-                    </View>
-                  ))
+                    );
+                  })
                 )}
               </View>
 
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ADD BY UID</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ADD FRIEND</Text>
+                <Text style={[styles.empty, { color: colors.textSecondary, fontStyle: 'normal', marginBottom: 8 }]}>
+                  Use search (top right) to find people by name or @handle, or paste a UID below.
+                </Text>
                 <View style={styles.addRow}>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
                     value={searchUid}
                     onChangeText={setSearchUid}
-                    placeholder="Friend's UID"
+                    placeholder="Or paste friend's UID"
                     placeholderTextColor={colors.textSecondary}
                     autoCapitalize="none"
                   />
@@ -179,8 +310,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 12 },
   backBtn: { padding: 8 },
-  headerTitle: { fontSize: 20, fontWeight: '800' },
-  scrollContent: { padding: 20, paddingBottom: 48 },
+  headerTitle: { fontSize: 20, fontWeight: '800', flex: 1, textAlign: 'center' },
+  headerSearchBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  scrollContent: { padding: SPACE.base, paddingBottom: 120 },
   error: { fontSize: 13, color: '#ef4444', marginBottom: 12 },
   loadWrap: { alignItems: 'center', paddingVertical: 48 },
   loadText: { marginTop: 12 },
@@ -206,4 +338,9 @@ const styles = StyleSheet.create({
   placeholderSub: { fontSize: 14, marginTop: 8, textAlign: 'center' },
   primaryBtn: { marginTop: 24, paddingVertical: 14, paddingHorizontal: 28, borderRadius: 14 },
   primaryBtnText: { fontSize: 16, fontWeight: '800', color: '#000' },
+  emptyFriends: { borderRadius: 14, borderWidth: 1, padding: 20, alignItems: 'center', marginTop: 4 },
+  emptyFriendsTitle: { fontSize: 16, fontWeight: '800', marginTop: 12, marginBottom: 6 },
+  emptyFriendsSub: { fontSize: 13, textAlign: 'center', lineHeight: 18, marginBottom: 16 },
+  inviteBtn: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  inviteBtnText: { fontSize: 14, fontWeight: '800', color: '#000' },
 });

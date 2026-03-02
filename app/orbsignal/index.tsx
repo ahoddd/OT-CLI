@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Pressable,
-  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -24,7 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useGame } from '../../context/GameContext';
+import { useWallet } from '../../hooks/useWallet';
 import { OTPointsBadge } from '../../components/OTPointsBadge';
 import {
   OrbSignalMarket,
@@ -33,57 +32,59 @@ import {
   getFeaturedMarkets,
   getEndingSoonMarkets,
 } from '../../constants/OrbSignal';
-import { HOLO_COLORS, SHINE_COLORS } from '../../constants/PremiumStyles';
+import { PARTNER_TIER_COLORS } from '../../constants/PartnerTiers';
 import { COLORS } from '../../constants/Colors';
-import * as Haptics from 'expo-haptics';
+import { useTheme } from '../../hooks/useTheme';
+import { useSignal } from '../../hooks/useSignal';
+import { usePartners } from '../../context/PartnersContext';
+import { useFlags } from '../../components/FlagContext';
+import { fetchOrbSignalMarketsFromFirestore } from '../../services/orbsignalMarkets';
+import { safeHaptics, Haptics } from '../../utils/safeHaptics';
+import { ShareToSocialSheet } from '../../components/ShareToSocialSheet';
+import { ORBTAP_APP_LINK } from '../../constants/AppLinks';
+import { useEffectiveTier } from '../../hooks/useEffectiveTier';
+
+const SIGNAL_DAILY_LIMIT: Record<'free' | 'premium' | 'pro', number> = {
+  free: 2,
+  premium: 10,
+  pro: Infinity,
+};
 
 const SIGNAL_HOLO_BORDER = 2;
 const SIGNAL_SHINE_OPACITY = 0.5;
 
 // --- How it works strip ---
 function HowItWorksStrip() {
+  const { colors } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
   const steps = [
     { icon: 'radio-outline' as const, label: 'Pick a signal', sub: 'Tap any market' },
     { icon: 'flash-outline' as const, label: 'Vote with OT Points', sub: `${VOTE_COST} pts per vote` },
     { icon: 'trophy-outline' as const, label: 'Earn rep & bonuses', sub: 'Correct = multipliers' },
   ];
   return (
-    <Animated.View entering={FadeInDown.duration(400)} style={styles.howWrap}>
+    <Animated.View entering={FadeInDown.duration(400)} style={[styles.howWrap, { borderColor: colors.border }]}>
       <BlurView intensity={40} tint="dark" style={styles.howBlur}>
         <View style={styles.howInner}>
-          <Text style={styles.howTitle}>How Orb Signal works</Text>
+          <Text style={[styles.howTitle, { color: colors.text }]}>How Orb Signal works</Text>
           <View style={styles.howSteps}>
             {steps.map((s, i) => (
               <View key={i} style={styles.howStep}>
                 <View style={styles.howIconWrap}>
-                  <Ionicons name={s.icon} size={22} color="#F59E0B" />
+                  <Ionicons name={s.icon} size={22} color={themeGold} />
                 </View>
-                <Text style={styles.howStepLabel}>{s.label}</Text>
-                <Text style={styles.howStepSub}>{s.sub}</Text>
+                <Text style={[styles.howStepLabel, { color: colors.text }]}>{s.label}</Text>
+                <Text style={[styles.howStepSub, { color: colors.textSecondary }]}>{s.sub}</Text>
               </View>
             ))}
           </View>
-          <Text style={styles.howDisclaimer}>
+          <Text style={[styles.howDisclaimer, { color: colors.textSecondary }]}>
             Entertainment only. No cash value. Correct forecasts earn reputation & bonus OT Points.
           </Text>
         </View>
       </BlurView>
     </Animated.View>
   );
-}
-
-// --- Share market ---
-async function shareMarket(market: OrbSignalMarket, voted?: 'yes' | 'no') {
-  try {
-    const message = voted
-      ? `I voted ${voted.toUpperCase()} on "${market.question}" — see the odds and vote on OrbTap Orb Signal.`
-      : `"${market.question}" — What do you think? Vote with OT Points on OrbTap Orb Signal.`;
-    await Share.share({
-      title: 'Orb Signal',
-      message,
-      url: undefined,
-    });
-  } catch {}
 }
 
 // --- Market Card ---
@@ -97,6 +98,7 @@ function SignalCard({
   onShare,
   onDetails,
   probability,
+  userVote,
 }: {
   market: OrbSignalMarket;
   isExpanded: boolean;
@@ -107,6 +109,8 @@ function SignalCard({
   onShare: () => void;
   onDetails?: () => void;
   probability: number;
+  /** If user already voted on this market, show that instead of Yes/No buttons. */
+  userVote: 'yes' | 'no' | null;
 }) {
   const expandProgress = useSharedValue(isExpanded ? 1 : 0);
   const shakeX = useSharedValue(0);
@@ -133,7 +137,7 @@ function SignalCard({
   }));
 
   const barFillStyle = useAnimatedStyle(() => ({
-    width: barWidth.value * 100 + '%',
+    width: `${barWidth.value * 100}%`,
   }));
 
   const triggerShake = useCallback(() => {
@@ -147,33 +151,40 @@ function SignalCard({
   }, [shakeX]);
 
   const handleVote = (vote: 'yes' | 'no') => {
+    if (userVote !== null) return; // already voted
     if (!canAfford) {
       triggerShake();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     if (vote === 'yes') onVoteYes();
     else onVoteNo();
   };
 
-  const accentColor = market.endingSoon ? '#EF4444' : market.featured ? '#F59E0B' : 'rgba(255,255,255,0.5)';
+  const { colors } = useTheme();
+  const { getPartner } = usePartners();
+  // Resolve tier from partner so tiles auto-adapt when partner upgrades/downgrades. Silver = free, Gold = premium, Platinum = pro.
+  const partner = market.partnerId ? getPartner(market.partnerId) : undefined;
+  const tier = partner?.tier ?? market.tier ?? 'silver';
+  const accentColor = PARTNER_TIER_COLORS[tier];
+  const borderColors = [accentColor, accentColor + 'dd', accentColor] as [string, string, ...string[]];
   return (
     <Animated.View style={[styles.cardWrap, shakeStyle]}>
       <Pressable onPress={onToggle}>
         <LinearGradient
-          colors={[...HOLO_COLORS]}
+          colors={borderColors as [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.cardHoloBorder, { padding: SIGNAL_HOLO_BORDER }]}
         >
-          <View style={[styles.cardInner, { backgroundColor: '#0d0d12' }]}>
+          <View style={[styles.cardInner, { backgroundColor: colors.surface }]}>
             <View style={[styles.tierBar, { backgroundColor: accentColor }]} />
             <LinearGradient
-              colors={[...SHINE_COLORS]}
+              colors={[accentColor + '18', accentColor + '08', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={[StyleSheet.absoluteFill, { opacity: SIGNAL_SHINE_OPACITY }]}
+              style={[StyleSheet.absoluteFill, { opacity: 0.9 }]}
               pointerEvents="none"
             />
             {market.imageUrl ? (
@@ -187,7 +198,7 @@ function SignalCard({
             <View style={styles.cardInnerContent}>
             <View style={styles.cardTopRow}>
               <View style={[styles.categoryPill, market.featured && styles.categoryPillFeatured]}>
-                <Text style={styles.categoryText}>{market.category}</Text>
+                <Text style={[styles.categoryText, { color: colors.text }]}>{market.category}</Text>
               </View>
               {market.endingSoon && (
                 <View style={styles.liveBadge}>
@@ -196,21 +207,21 @@ function SignalCard({
                 </View>
               )}
               {market.liveViewers != null && market.liveViewers > 0 && (
-                <Text style={styles.viewersText}>{market.liveViewers} viewing</Text>
+                <Text style={[styles.viewersText, { color: colors.textSecondary }]}>{market.liveViewers} viewing</Text>
               )}
               <TouchableOpacity
                 onPress={() => {
-                  Haptics.selectionAsync();
+                  safeHaptics.selectionAsync();
                   onShare();
                 }}
                 style={styles.shareBtn}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               >
-                <Ionicons name="share-outline" size={20} color="rgba(255,255,255,0.8)" />
+                <Ionicons name="share-outline" size={20} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.cardQuestion}>{market.question}</Text>
+            <Text style={[styles.cardQuestion, { color: colors.text }]}>{market.question}</Text>
 
             <View style={styles.sentimentBarWrap}>
               <View style={styles.sentimentBarBg}>
@@ -222,7 +233,7 @@ function SignalCard({
                     style={StyleSheet.absoluteFill}
                   />
                 </View>
-                <Animated.View style={[styles.sentimentBarFill, barFillStyle]}>
+                <Animated.View style={[styles.sentimentBarFill as Record<string, unknown>, barFillStyle]}>
                   <LinearGradient
                     colors={['#0D9488', '#14B8A6']}
                     start={{ x: 0, y: 0 }}
@@ -232,20 +243,20 @@ function SignalCard({
                 </Animated.View>
               </View>
               <View style={styles.sentimentBarOverlay} pointerEvents="none">
-                <Text style={styles.sentimentBarLabel}>{probability}% YES</Text>
+                <Text style={[styles.sentimentBarLabel, { color: colors.text }]}>{probability}% YES</Text>
               </View>
             </View>
 
             <View style={styles.cardMeta}>
-              <OTPointsBadge amount={market.pool.toLocaleString()} size={14} label="pts" compact textColor="#F59E0B" />
-              <Text style={styles.endsText}>Ends {market.endsAtShort}</Text>
+              <OTPointsBadge amount={market.pool.toLocaleString()} size={14} label="pts" compact textColor={accentColor} />
+              <Text style={[styles.endsText, { color: colors.textSecondary }]}>Ends {market.endsAtShort}</Text>
             </View>
             {market.rewardNote ? (
-              <Text style={styles.rewardNote}>{market.rewardNote}</Text>
+              <Text style={[styles.rewardNote, { color: accentColor }]}>{market.rewardNote}</Text>
             ) : null}
             <View style={styles.voteCostRow}>
-              <Text style={styles.voteCostLabel}>Vote cost</Text>
-              <OTPointsBadge amount={market.voteCost} size={16} label="pts" compact textColor="#fff" />
+              <Text style={[styles.voteCostLabel, { color: colors.textSecondary }]}>Vote cost</Text>
+              <OTPointsBadge amount={market.voteCost} size={16} label="pts" compact textColor={colors.text} />
             </View>
             </View>
           </View>
@@ -253,30 +264,39 @@ function SignalCard({
       </Pressable>
 
       <Animated.View style={[styles.expandedRow, expandedStyle]}>
-        <TouchableOpacity
-          style={[styles.voteBtn, styles.voteYes]}
-          onPress={() => handleVote('yes')}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#0D9488', '#14B8A6']}
-            style={StyleSheet.absoluteFill}
-          />
-          <Text style={styles.voteBtnText}>VOTE YES</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.voteBtn, styles.voteNo]}
-          onPress={() => handleVote('no')}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#E11D48', '#F43F5E']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <Text style={styles.voteBtnText}>VOTE NO</Text>
-        </TouchableOpacity>
+        {userVote !== null ? (
+          <View style={[styles.votedRow, { backgroundColor: colors.surfaceHighlight, borderColor: colors.border }]}>
+            <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+            <Text style={[styles.votedText, { color: colors.text }]}>You voted {userVote.toUpperCase()}</Text>
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.voteBtn, styles.voteYes]}
+              onPress={() => handleVote('yes')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['#0D9488', '#14B8A6']}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.voteBtnText}>VOTE YES</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.voteBtn, styles.voteNo]}
+              onPress={() => handleVote('no')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['#E11D48', '#F43F5E']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.voteBtnText}>VOTE NO</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </Animated.View>
     </Animated.View>
   );
@@ -287,10 +307,12 @@ function ConfirmedOverlay({
   market,
   vote,
   onDismiss,
+  onShareRequest,
 }: {
   market: OrbSignalMarket;
   vote: 'yes' | 'no';
   onDismiss: () => void;
+  onShareRequest: (payload: { message: string; title: string; url?: string }) => void;
 }) {
   const scale = useSharedValue(0);
   const opacity = useSharedValue(0);
@@ -306,23 +328,25 @@ function ConfirmedOverlay({
   }));
 
   const handleSharePick = () => {
-    Haptics.selectionAsync();
-    shareMarket(market, vote);
+    safeHaptics.selectionAsync();
+    const message = `I voted ${vote.toUpperCase()} on "${market.question}" — see the odds and vote on OrbTap Orb Signal.`;
+    onShareRequest({ message, title: 'Orb Signal', url: ORBTAP_APP_LINK });
   };
 
+  const { colors } = useTheme();
   return (
     <Animated.View style={[styles.confirmOverlay, overlayStyle]}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />
-      <Animated.View style={[styles.confirmBox, iconStyle]}>
+      <Animated.View style={[styles.confirmBox, iconStyle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Ionicons name="checkmark-circle" size={72} color={COLORS.success} />
-        <Text style={styles.confirmTitle}>Vote recorded</Text>
-        <Text style={styles.confirmSub}>You voted {vote.toUpperCase()}. Correct forecasts earn bonus OT Points.</Text>
-        <TouchableOpacity style={styles.sharePickBtn} onPress={handleSharePick} activeOpacity={0.85}>
-          <Ionicons name="share-social" size={20} color="#000" />
-          <Text style={styles.sharePickText}>Share your pick</Text>
+        <Text style={[styles.confirmTitle, { color: colors.text }]}>Vote recorded</Text>
+        <Text style={[styles.confirmSub, { color: colors.textSecondary }]}>You voted {vote.toUpperCase()}. Correct forecasts earn bonus OT Points.</Text>
+        <TouchableOpacity style={[styles.sharePickBtn, { backgroundColor: colors.surfaceHighlight }]} onPress={handleSharePick} activeOpacity={0.85}>
+          <Ionicons name="share-social" size={20} color={colors.text} />
+          <Text style={[styles.sharePickText, { color: colors.text }]}>Share your pick</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.confirmDismissBtn} onPress={onDismiss}>
-          <Text style={styles.confirmDismissText}>Done</Text>
+          <Text style={[styles.confirmDismissText, { color: colors.textSecondary }]}>Done</Text>
         </TouchableOpacity>
       </Animated.View>
     </Animated.View>
@@ -332,27 +356,69 @@ function ConfirmedOverlay({
 // --- Screen ---
 export default function OrbSignalScreen() {
   const router = useRouter();
-  const { points, purchaseUpgrade } = useGame();
+  const { colors } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
+  const { balance: points } = useWallet();
+  const { placeForecast, getMyVoteForMarket, myForecasts } = useSignal();
+  const { flags } = useFlags();
+  const { tier } = useEffectiveTier();
   const [markets, setMarkets] = useState<OrbSignalMarket[]>(() =>
     MOCK_ORB_SIGNAL_MARKETS.map((m) => ({ ...m, percentages: [...m.percentages] }))
   );
+  const [marketsError, setMarketsError] = useState(false);
+  const [marketsLoading, setMarketsLoading] = useState(false);
+
+  const fetchMarkets = React.useCallback(() => {
+    if (!flags.isFirestoreLiveEnabled) return;
+    setMarketsError(false);
+    setMarketsLoading(true);
+    fetchOrbSignalMarketsFromFirestore(50)
+      .then((list) => {
+        if (list.length > 0) setMarkets(list.map((m) => ({ ...m, percentages: [...m.percentages] })));
+      })
+      .catch(() => setMarketsError(true))
+      .finally(() => setMarketsLoading(false));
+  }, [flags.isFirestoreLiveEnabled]);
+
+  React.useEffect(() => {
+    fetchMarkets();
+  }, [fetchMarkets]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<{ market: OrbSignalMarket; vote: 'yes' | 'no' } | null>(null);
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [sharePayload, setSharePayload] = useState<{ message: string; title?: string; url?: string } | null>(null);
+  const [segment, setSegment] = useState<'all' | 'featured' | 'endingSoon'>('all');
 
   const canAfford = points >= VOTE_COST;
+
+  // Rate-limit calculations
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const todayForecastCount = myForecasts.filter((f) => f.createdAt >= todayStart.getTime()).length;
+  const dailyLimit = SIGNAL_DAILY_LIMIT[tier];
+  const remaining = dailyLimit === Infinity ? Infinity : Math.max(0, dailyLimit - todayForecastCount);
+  const isRateLimited = remaining === 0;
+
   const featured = getFeaturedMarkets();
   const endingSoon = getEndingSoonMarkets();
+  const filteredMarkets = segment === 'featured' ? featured : segment === 'endingSoon' ? endingSoon : [...markets];
 
   const handleToggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   }, []);
 
   const applyVote = useCallback(
-    (marketId: string, direction: 'yes' | 'no') => {
-      const ok = purchaseUpgrade(VOTE_COST, 0);
-      if (!ok) return;
+    async (marketId: string, direction: 'yes' | 'no') => {
+      if (getMyVoteForMarket(marketId)) return; // already voted
+      if (points < VOTE_COST) return;
+      if (isRateLimited) {
+        router.push('/premium' as any);
+        return;
+      }
       const market = markets.find((m) => m.id === marketId);
       if (!market) return;
+      const outcomeIndex = direction === 'yes' ? 0 : 1;
+      const outcomeLabel = market.outcomes?.[outcomeIndex] ?? direction.toUpperCase();
+      await placeForecast(marketId, outcomeIndex, VOTE_COST, market.question, outcomeLabel);
       setMarkets((prev) =>
         prev.map((m) => {
           if (m.id !== marketId) return m;
@@ -362,33 +428,43 @@ export default function OrbSignalScreen() {
       );
       setConfirmState({ market, vote: direction });
       setExpandedId(null);
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
-    [purchaseUpgrade, markets]
+    [points, markets, placeForecast, getMyVoteForMarket, isRateLimited, router]
   );
 
   const handleShareMarket = useCallback((market: OrbSignalMarket) => {
-    shareMarket(market);
+    const message = `"${market.question}" — What do you think? Vote with OT Points on OrbTap Orb Signal.`;
+    setSharePayload({ message, title: 'Orb Signal', url: ORBTAP_APP_LINK });
+    setShareSheetVisible(true);
   }, []);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={['#0f0f12', '#1a1a20', '#0a0a0d']}
+        colors={[colors.background, colors.surface, colors.background]}
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Orb Signal</Text>
-            <Text style={styles.headerSub}>Predict. Vote. Earn.</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Orb Signal</Text>
+            {dailyLimit !== Infinity && (
+              <Text style={[styles.headerSub, { color: isRateLimited ? COLORS.danger : colors.textSecondary }]}>
+                {isRateLimited ? 'Daily limit reached' : `${remaining}/${dailyLimit} forecasts left today`}
+              </Text>
+            )}
+            {dailyLimit === Infinity && (
+              <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Predict. Vote. Earn.</Text>
+            )}
           </View>
-          <View style={styles.reputationWrap}>
-            <OTPointsBadge amount={points} size={20} label="pts" compact textColor="#F59E0B" />
-            <Text style={styles.reputationLabel}>Balance</Text>
-          </View>
+          <TouchableOpacity style={[styles.reputationWrap, { backgroundColor: colors.surfaceHighlight }]} onPress={() => router.push('/(tabs)/wallet' as any)} activeOpacity={0.8} accessibilityLabel="Your OT Points. Tap to open Wallet." accessibilityRole="button">
+            <OTPointsBadge amount={points} size={20} label="pts" compact textColor={themeGold} />
+            <Text style={[styles.reputationLabel, { color: colors.textSecondary }]}>Balance</Text>
+          </TouchableOpacity>
       </View>
       
         <ScrollView
@@ -398,12 +474,45 @@ export default function OrbSignalScreen() {
         >
           <HowItWorksStrip />
 
+          <View style={[styles.segmentRow, { borderColor: colors.border }]}>
+            <TouchableOpacity style={[styles.segmentPill, segment === 'all' && styles.segmentPillActive, segment === 'all' && { backgroundColor: themeGold + '30', borderColor: themeGold }]} onPress={() => setSegment('all')}>
+              <Text style={[styles.segmentPillText, { color: segment === 'all' ? themeGold : colors.textSecondary }]}>All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.segmentPill, segment === 'featured' && styles.segmentPillActive, segment === 'featured' && { backgroundColor: themeGold + '30', borderColor: themeGold }]} onPress={() => setSegment('featured')}>
+              <Text style={[styles.segmentPillText, { color: segment === 'featured' ? themeGold : colors.textSecondary }]}>Featured</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.segmentPill, segment === 'endingSoon' && styles.segmentPillActive, segment === 'endingSoon' && { backgroundColor: themeGold + '30', borderColor: themeGold }]} onPress={() => setSegment('endingSoon')}>
+              <Text style={[styles.segmentPillText, { color: segment === 'endingSoon' ? themeGold : colors.textSecondary }]}>Ending soon</Text>
+            </TouchableOpacity>
+          </View>
+
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.section}>
-            <Text style={styles.sectionTitle}>Signals</Text>
-            {endingSoon.length > 0 && (
-              <Text style={styles.sectionSub}>Markets closing soon. Final hours to cast your prediction.</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Signals</Text>
+            {segment === 'endingSoon' && endingSoon.length > 0 && (
+              <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Markets closing soon. Final hours to cast your prediction.</Text>
             )}
-            {[...markets]
+            {marketsError ? (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="wifi-outline" size={40} color={colors.textSecondary} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>Could not load markets</Text>
+                <Text style={[styles.emptySub, { color: colors.textSecondary }]}>Check your connection and try again.</Text>
+                <TouchableOpacity style={[styles.emptyCta, { backgroundColor: COLORS.neonBlue[0] }]} onPress={fetchMarkets}>
+                  <Text style={styles.emptyCtaText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : !marketsLoading && filteredMarkets.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>No active markets</Text>
+                <Text style={[styles.emptySub, { color: colors.textSecondary }]}>Check back soon — new prediction markets open daily.</Text>
+                <TouchableOpacity style={[styles.emptyCta, { backgroundColor: colors.primary }]} onPress={() => router.push('/pulse' as any)}>
+                  <Text style={styles.emptyCtaText}>OrbPulse</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.emptyCta, { borderColor: colors.border }]} onPress={() => router.push('/missions' as any)}>
+                  <Text style={[styles.emptyCtaText, { color: colors.text }]}>Missions</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+            [...filteredMarkets]
               .sort((a, b) => (a.endingSoon === b.endingSoon ? 0 : a.endingSoon ? -1 : 1))
               .map((market) => (
           <SignalCard 
@@ -414,22 +523,42 @@ export default function OrbSignalScreen() {
                 onToggle={() => handleToggleExpand(market.id)}
                 onVoteYes={() => applyVote(market.id, 'yes')}
                 onVoteNo={() => applyVote(market.id, 'no')}
-                canAfford={canAfford}
+                canAfford={canAfford && !isRateLimited}
                 onShare={() => handleShareMarket(market)}
                 onDetails={() => router.push(`/orbsignal/${market.id}` as any)}
+                userVote={(() => { const f = getMyVoteForMarket(market.id); return f ? (f.outcomeIndex === 0 ? 'yes' as const : 'no' as const) : null; })()}
               />
-            ))}
+            ))
+            )}
           </Animated.View>
 
           <TouchableOpacity
             style={styles.detailCta}
             onPress={() => router.push('/orbsignal/m1' as any)}
           >
-            <Text style={styles.detailCtaText}>How are odds calculated?</Text>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.6)" />
+            <Text style={[styles.detailCtaText, { color: colors.textSecondary }]}>How are odds calculated?</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <Text style={styles.disclaimer}>
+          <View style={styles.quickLinksWrap}>
+            <Text style={[styles.quickLinksLabel, { color: colors.textSecondary }]}>More</Text>
+            <View style={styles.quickLinksRow}>
+              <TouchableOpacity style={[styles.quickLinkPill, { backgroundColor: colors.surface }]} onPress={() => router.push('/pulse' as any)}>
+                <Ionicons name="pulse" size={18} color={colors.text} />
+                <Text style={[styles.quickLinkPillText, { color: colors.text }]}>OrbPulse</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.quickLinkPill, { backgroundColor: colors.surface }]} onPress={() => router.push('/vote' as any)}>
+                <Ionicons name="stats-chart" size={18} color={colors.text} />
+                <Text style={[styles.quickLinkPillText, { color: colors.text }]}>OrbVote</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.quickLinkPill, { backgroundColor: colors.surface }]} onPress={() => router.push('/stats' as any)}>
+                <Ionicons name="stats-chart" size={18} color={colors.text} />
+                <Text style={[styles.quickLinkPillText, { color: colors.text }]}>Stats</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={[styles.disclaimer, { color: colors.textSecondary }]}>
             Entertainment only. No wagering. Not financial advice. OT Points have no cash value.
           </Text>
         </ScrollView>
@@ -440,6 +569,18 @@ export default function OrbSignalScreen() {
           market={confirmState.market}
           vote={confirmState.vote}
           onDismiss={() => setConfirmState(null)}
+          onShareRequest={(payload) => {
+            setSharePayload(payload);
+            setShareSheetVisible(true);
+          }}
+        />
+      )}
+      {sharePayload && (
+        <ShareToSocialSheet
+          visible={shareSheetVisible}
+          onClose={() => { setShareSheetVisible(false); setSharePayload(null); }}
+          payload={sharePayload}
+          label="Share Orb Signal"
         />
       )}
     </View>
@@ -471,7 +612,7 @@ const styles = StyleSheet.create({
   },
   reputationLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginTop: 4 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 48 },
+  scrollContent: { padding: 20, paddingBottom: 120 },
   howWrap: { marginBottom: 24, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   howBlur: { borderRadius: 16, overflow: 'hidden' },
   howInner: { padding: 18 },
@@ -482,6 +623,15 @@ const styles = StyleSheet.create({
   howStepLabel: { fontSize: 12, fontWeight: '700', color: '#FFF' },
   howStepSub: { fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   howDisclaimer: { fontSize: 10, color: 'rgba(255,255,255,0.4)', lineHeight: 14, textAlign: 'center' },
+  segmentRow: { flexDirection: 'row', gap: 10, marginBottom: 20, paddingHorizontal: 4 },
+  segmentPill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  segmentPillActive: {},
+  segmentPillText: { fontSize: 14, fontWeight: '700' },
+  emptyWrap: { paddingVertical: 32, alignItems: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  emptySub: { fontSize: 14, marginBottom: 20, textAlign: 'center' },
+  emptyCta: { paddingVertical: 14, paddingHorizontal: 24, borderRadius: 14, borderWidth: 1, marginTop: 10 },
+  emptyCtaText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   section: { marginBottom: 24 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: '#FFF', letterSpacing: 0.5, marginBottom: 4 },
   sectionSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 12 },
@@ -520,6 +670,17 @@ const styles = StyleSheet.create({
   voteYes: {},
   voteNo: {},
   voteBtnText: { fontSize: 15, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 },
+  votedRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  votedText: { fontSize: 15, fontWeight: '700' },
   confirmOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.88)',
@@ -537,5 +698,10 @@ const styles = StyleSheet.create({
   confirmDismissText: { fontSize: 15, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
   detailCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8, paddingVertical: 14 },
   detailCtaText: { fontSize: 14, color: 'rgba(255,255,255,0.6)' },
+  quickLinksWrap: { marginTop: 16, marginBottom: 8, paddingVertical: 12, paddingHorizontal: 8, borderWidth: 1, borderRadius: 12, borderColor: 'rgba(255,255,255,0.08)' },
+  quickLinksLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 8, marginHorizontal: 4, color: 'rgba(255,255,255,0.5)' },
+  quickLinksRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  quickLinkPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.06)' },
+  quickLinkPillText: { fontSize: 12, fontWeight: '600', color: '#FFF' },
   disclaimer: { fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center', marginTop: 24, paddingHorizontal: 20, lineHeight: 14 },
 });

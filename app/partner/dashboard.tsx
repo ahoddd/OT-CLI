@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Share } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Animated, Share, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/Colors';
-import { SPACE } from '../../constants/DesignTokens';
+import { SPACE, RADIUS } from '../../constants/DesignTokens';
 import { GuidedTutorialOverlay } from '../../components/GuidedTutorialOverlay';
 import { useTutorial } from '../../context/TutorialContext';
-import { PARTNER_PREMIUM_TEASER } from '../../constants/ConversionCopy';
 import { PARTNER_TIER_COLORS } from '../../constants/PartnerTiers';
 import { useTheme } from '../../hooks/useTheme';
 import { useFlags } from '../../components/FlagContext';
@@ -19,7 +18,7 @@ import { PremiumBadge } from '../../components/PremiumBadge';
 import { LinearGradient } from 'expo-linear-gradient';
 import { safeHaptics } from '../../utils/safeHaptics';
 import { getPartnerMetrics } from '../../services/partnerAttribution';
-import { getPartnerAnalyticsSummary, type PartnerAnalyticsSummary } from '../../services/partnerAnalytics';
+import { getPartnerAnalyticsSummary, getPartnerAnalyticsDailyHistory, type PartnerAnalyticsSummary } from '../../services/partnerAnalytics';
 import { usePartners } from '../../context/PartnersContext';
 import { useWallet } from '../../hooks/useWallet';
 import { getPartnerTierShadow } from '../../constants/PartnerTiers';
@@ -29,11 +28,16 @@ import { GROWTH_SUGGESTIONS_TIERS } from '../../constants/OrbSwipeConfig';
 import type { OrbSwipeEvent } from '../../services/orbswipeAnalytics';
 import { useMyPartner } from '../../hooks/useMyPartner';
 import { usePartnerTasks } from '../../hooks/usePartnerTasks';
+import { useReviews } from '../../hooks/useReviews';
+import { partnerUpdateSelf } from '../../services/partnersFirestore';
 import { useMenuContext } from '../../context/MenuContext';
 import { KitEmptyState } from '../../components/ui';
 import { PartnerFrostedCard } from '../../components/PartnerFrostedCard';
+import { PartnerPageQRModal } from '../../components/PartnerPageQRModal';
+import { usePartnerPendingApplicationsCount } from '../../hooks/useOpportunities';
+import * as pollsService from '../../services/polls';
 
-const CARD_GAP = SPACE.sm;
+const CARD_GAP = SPACE.md;
 
 const ANALYTICS_CHART_MAX_BAR = 80;
 
@@ -52,30 +56,41 @@ interface ChecklistState {
   stampCard: boolean;
   shared: boolean;
   invitedSphere: boolean;
+  hotspot: boolean;
+  qrShared: boolean;
 }
 
 function GettingStartedChecklist({
   partnerId,
+  partnerName,
   hasPerks,
   hasViews,
   tierColor,
+  onShowQR,
 }: {
   partnerId: string;
+  partnerName?: string;
   hasPerks: boolean;
   hasViews: boolean;
   tierColor: string;
+  onShowQR: () => void;
 }) {
   const [state, setState] = useState<ChecklistState | null>(null);
   const router = useRouter();
   const { colors } = useTheme();
-  const storageKey = `ORBTAP_PARTNER_CHECKLIST_V1_${partnerId}`;
+  const storageKey = `ORBTAP_PARTNER_CHECKLIST_V2_${partnerId}`;
 
   useEffect(() => {
     AsyncStorage.getItem(storageKey).then((raw) => {
       if (raw) {
-        try { setState(JSON.parse(raw)); } catch { setState({ dismissed: false, stampCard: false, shared: false, invitedSphere: false }); }
+        try {
+          const parsed = JSON.parse(raw);
+          setState({ dismissed: false, stampCard: false, shared: false, invitedSphere: false, hotspot: false, qrShared: false, ...parsed });
+        } catch {
+          setState({ dismissed: false, stampCard: false, shared: false, invitedSphere: false, hotspot: false, qrShared: false });
+        }
       } else {
-        setState({ dismissed: false, stampCard: false, shared: false, invitedSphere: false });
+        setState({ dismissed: false, stampCard: false, shared: false, invitedSphere: false, hotspot: false, qrShared: false });
       }
     });
   }, [storageKey]);
@@ -87,17 +102,17 @@ function GettingStartedChecklist({
 
   const step1 = hasPerks;
   const step2 = hasViews;
-  const done = [step1, step2, state?.stampCard, state?.shared, state?.invitedSphere].filter(Boolean).length;
+  const done = [step1, step2, state?.stampCard, state?.shared, state?.invitedSphere, state?.hotspot, state?.qrShared].filter(Boolean).length;
 
   useEffect(() => {
-    if (state && !state.dismissed && done === 5) {
+    if (state && !state.dismissed && done === 7) {
       save({ ...state, dismissed: true });
     }
   }, [done]);
 
   if (!state || state.dismissed) return null;
 
-  const pct = done / 5;
+  const pct = done / 7;
 
   const steps = [
     {
@@ -108,7 +123,7 @@ function GettingStartedChecklist({
     {
       label: 'Get your first visit',
       done: step2,
-      onPress: undefined as (() => void) | undefined,
+      onPress: () => router.push(`/partner/${partnerId}` as any),
     },
     {
       label: 'Set up a Stamp Card',
@@ -128,13 +143,23 @@ function GettingStartedChecklist({
       done: state.invitedSphere,
       onPress: () => { save({ ...state, invitedSphere: true }); router.push('/partner/invite-sphere' as any); },
     },
+    {
+      label: 'Activate your first Hot Spot',
+      done: state.hotspot,
+      onPress: () => { save({ ...state, hotspot: true }); router.push('/partner/hotspot-activate' as any); },
+    },
+    {
+      label: 'Share your QR code with customers',
+      done: state.qrShared,
+      onPress: () => { save({ ...state, qrShared: true }); onShowQR(); },
+    },
   ];
 
   return (
     <View style={[checklistStyles.card, { backgroundColor: colors.surface, borderColor: tierColor + '40' }]}>
       <View style={checklistStyles.header}>
         <Text style={[checklistStyles.title, { color: colors.text }]}>Getting Started</Text>
-        <Text style={[checklistStyles.count, { color: tierColor }]}>{done}/5</Text>
+        <Text style={[checklistStyles.count, { color: tierColor }]}>{done}/7</Text>
         <TouchableOpacity onPress={() => save({ ...state, dismissed: true })} hitSlop={12}>
           <Ionicons name="close" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -176,31 +201,21 @@ const checklistStyles = StyleSheet.create({
   rowLabel: { fontSize: 13, fontWeight: '600', flex: 1 },
 });
 
-function UpgradeTeaserCard() {
-  const { colors } = useTheme();
-  const themeGold = colors.gold ?? COLORS.gold[0];
-  const router = useRouter();
-  return (
-    <TouchableOpacity
-      style={[styles.upgradeTeaserCard, { backgroundColor: themeGold + '14', borderColor: themeGold + '50' }]}
-      onPress={() => { safeHaptics.selectionAsync(); router.push('/compare-accounts' as any); }}
-      activeOpacity={0.9}
-    >
-      <View style={styles.upgradeTeaserContent}>
-        <View style={[styles.upgradeTeaserIconWrap, { backgroundColor: themeGold + '22' }]}>
-          <Ionicons name="diamond" size={24} color={themeGold} />
-        </View>
-        <View style={styles.upgradeTeaserTextWrap}>
-          <Text style={[styles.upgradeTeaserTitle, { color: colors.text }]}>Unlock Premium Partner</Text>
-          <Text style={[styles.upgradeTeaserSub, { color: colors.textSecondary }]}>
-            {PARTNER_PREMIUM_TEASER}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={themeGold} />
-      </View>
-    </TouchableOpacity>
-  );
+function StatSkeleton({ width = 60, height = 24, color }: { width?: number; height?: number; color: string }) {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.7, duration: 600, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [opacity]);
+  return <Animated.View style={{ width, height, borderRadius: 6, backgroundColor: color, opacity, marginVertical: 6 }} />;
 }
+
 
 export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolean } = {}) {
   const router = useRouter();
@@ -222,9 +237,12 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
   const isPremiumPartner = isPremiumPartnerTier(effectivePartnerTier);
   const isProPartner = isProPartnerTier(effectivePartnerTier);
   const tierColor = PARTNER_TIER_COLORS[effectivePartnerTier];
-  const [showOrbOpsButton, setShowOrbOpsButton] = useState(true);
-  const [offersCatering, setOffersCatering] = useState(true);
   const partnerId = myPartnerId ?? partner?.id ?? 'p1';
+  const showOrbOpsButton = partner?.showOrbOpsButton !== false;
+  const offersCatering = partner?.offersCatering === true;
+  const { getPartnerReviews } = useReviews();
+  const partnerReviews = getPartnerReviews(partnerId);
+  const latestReview = partnerReviews.length > 0 ? partnerReviews[0] : null;
   const perksForPartner = getPerksForPartner(partnerId);
   const hasNoPerks = perksForPartner.length === 0;
   const { tasks, taskCount } = usePartnerTasks(partnerId);
@@ -235,14 +253,28 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
   const { balance } = useWallet();
   const [analytics, setAnalytics] = useState<PartnerAnalyticsSummary | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [dailyHistory, setDailyHistory] = useState<{ date: string; total: number }[]>([]);
   const [orbSwipeEvents, setOrbSwipeEvents] = useState<OrbSwipeEvent[]>([]);
+  const [showPartnerQR, setShowPartnerQR] = useState(false);
+  const [partnerPolls, setPartnerPolls] = useState<{ totalVotes: number }[]>([]);
   const growthTier = (GROWTH_SUGGESTIONS_TIERS[effectivePartnerTier] ?? 'none') as 'full' | 'tip' | 'none';
+  const pendingAppsCount = usePartnerPendingApplicationsCount(partnerId);
+  const pollsWithNoResponses = partnerPolls.filter((p) => p.totalVotes === 0).length;
+  const avgRating = partnerReviews.length > 0
+    ? partnerReviews.reduce((s, r) => s + r.rating, 0) / partnerReviews.length
+    : null;
 
   useEffect(() => {
     getPartnerAnalyticsSummary(partnerId, isPremiumPartner ? 30 : 7)
       .then(setAnalytics)
       .catch(() => setAnalytics(null))
       .finally(() => setAnalyticsLoading(false));
+  }, [partnerId, isPremiumPartner]);
+
+  useEffect(() => {
+    getPartnerAnalyticsDailyHistory(partnerId, isPremiumPartner ? 14 : 7)
+      .then(setDailyHistory)
+      .catch(() => setDailyHistory([]));
   }, [partnerId, isPremiumPartner]);
 
   useEffect(() => {
@@ -258,6 +290,12 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
       } catch {}
     });
   }, [partnerId, growthTier]);
+
+  useEffect(() => {
+    pollsService.getPollsForPartner(partnerId).then((polls) => {
+      setPartnerPolls(polls.map((p) => ({ totalVotes: p.totalVotes })));
+    }).catch(() => setPartnerPolls([]));
+  }, [partnerId]);
 
   if (!isPartner) return <Redirect href={embedInTabs ? '/(tabs)/orb' : '/(tabs)'} />;
 
@@ -329,6 +367,41 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
             </View>
           </TouchableOpacity>
         )}
+
+        {/* Section 1 — Hero Snapshot: 4-stat bento grid */}
+        <SectionTitle title="SNAPSHOT" />
+        <View style={styles.heroSnapshotGrid}>
+          <PartnerFrostedCard borderColor={tierColor} style={[styles.heroStatCard, styles.frostedStatCard]}>
+            <TouchableOpacity style={styles.statLabelRow} onPress={() => Alert.alert('Verified Visits', 'Total of mission completions + perk redemptions at your venue.')} hitSlop={8}>
+              <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Verified Visits</Text>
+              <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
+            </TouchableOpacity>
+            {analyticsLoading ? (
+              <StatSkeleton color={tierColor} />
+            ) : (
+              <Text style={[styles.heroStatValue, { color: tierColor }]}>{(analytics?.missionsCompleted ?? 0) + roi.redemptions}</Text>
+            )}
+          </PartnerFrostedCard>
+          <PartnerFrostedCard borderColor={tierColor} style={[styles.heroStatCard, styles.frostedStatCard]}>
+            <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Perk Redemptions</Text>
+            <Text style={[styles.heroStatValue, { color: tierColor }]}>{roi.redemptions}</Text>
+          </PartnerFrostedCard>
+          <PartnerFrostedCard borderColor={tierColor} style={[styles.heroStatCard, styles.frostedStatCard]}>
+            <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Profile Views</Text>
+            {analyticsLoading ? (
+              <StatSkeleton color={colors.textSecondary} />
+            ) : (
+              <Text style={[styles.heroStatValue, { color: colors.text }]}>{analytics?.views ?? roi.views}</Text>
+            )}
+          </PartnerFrostedCard>
+          <PartnerFrostedCard borderColor={tierColor} style={[styles.heroStatCard, styles.frostedStatCard]}>
+            <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Avg Rating</Text>
+            <Text style={[styles.heroStatValue, { color: colors.text }]}>
+              {avgRating != null ? avgRating.toFixed(1) : '—'}
+            </Text>
+          </PartnerFrostedCard>
+        </View>
+
         {/* Wallet strip — show when partner has a balance */}
         {balance > 0 && (
           <TouchableOpacity
@@ -376,18 +449,20 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
           </View>
         )}
 
-        {/* Getting Started checklist — new partner activation */}
+        {/* Section 2 — Getting Started checklist */}
         {!analyticsLoading && (
           <GettingStartedChecklist
             partnerId={partnerId}
+            partnerName={partner?.name}
             hasPerks={perksForPartner.length > 0}
             hasViews={(analytics?.views ?? 0) > 0}
             tierColor={tierColor}
+            onShowQR={() => setShowPartnerQR(true)}
           />
         )}
 
-        {/* Hero: tier badge and upgrade teasers by partner tier */}
-        {isPremiumPartner ? (
+        {/* Hero: tier badge (premium/platinum only) */}
+        {isPremiumPartner && (
           <>
             <LinearGradient
               colors={effectivePartnerTier === 'platinum' ? [PARTNER_TIER_COLORS.platinum, '#8b5cf6'] : [themeGold, COLORS.gold[1]]}
@@ -419,8 +494,6 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
               </TouchableOpacity>
             )}
           </>
-        ) : (
-          <UpgradeTeaserCard />
         )}
 
         {/* Value prop — tier-colored, premium strip */}
@@ -431,7 +504,113 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
           </Text>
         </View>
 
-        {/* OVERVIEW — Your impact: 2x2 grid */}
+        {/* Section 3 — Growth Opportunities (above tools grid) */}
+        <SectionTitle title="GROWTH OPPORTUNITIES" />
+        <View style={styles.growthOpportunitiesBlock}>
+          <TouchableOpacity
+            style={[styles.hotSpotCta, { backgroundColor: themeGold + '14', borderColor: themeGold + '55' }]}
+            onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/hotspot-activate' as any); }}
+            activeOpacity={0.88}
+          >
+            <View style={[styles.hotSpotIconWrap, { backgroundColor: themeGold + '28' }]}>
+              <Ionicons name="flash" size={20} color={themeGold} />
+            </View>
+            <View style={styles.hotSpotText}>
+              <Text style={[styles.hotSpotTitle, { color: colors.text }]}>Activate a Hot Spot — from $15</Text>
+              <Text style={[styles.hotSpotSub, { color: colors.textSecondary }]}>2-hour 2× OT window · Push nearby users · Drive instant foot traffic</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={themeGold} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.growthCard, { backgroundColor: themeGold + '12', borderColor: themeGold + '44' }]}
+            onPress={() => { safeHaptics.selectionAsync(); router.push('/compare-accounts' as any); }}
+            activeOpacity={0.88}
+          >
+            <Ionicons name="star" size={20} color={themeGold} />
+            <View style={styles.growthCardText}>
+              <Text style={[styles.growthCardTitle, { color: colors.text }]}>Featured placement</Text>
+              <Text style={[styles.growthCardSub, { color: colors.textSecondary }]}>Get on the map hero and Tonight Picks</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={themeGold} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.growthCard, { backgroundColor: themeGold + '12', borderColor: themeGold + '44' }]}
+            onPress={() => { safeHaptics.selectionAsync(); router.push('/compare-accounts' as any); }}
+            activeOpacity={0.88}
+          >
+            <Ionicons name="megaphone" size={20} color={themeGold} />
+            <View style={styles.growthCardText}>
+              <Text style={[styles.growthCardTitle, { color: colors.text }]}>Sponsored ad slot</Text>
+              <Text style={[styles.growthCardSub, { color: colors.textSecondary }]}>Reach more users in Pulse and Feed</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={themeGold} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.growthCard, { backgroundColor: themeGold + '12', borderColor: themeGold + '44' }]}
+            onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/referral' as any); }}
+            activeOpacity={0.88}
+          >
+            <Ionicons name="people" size={20} color={themeGold} />
+            <View style={styles.growthCardText}>
+              <Text style={[styles.growthCardTitle, { color: colors.text }]}>Refer a business</Text>
+              <Text style={[styles.growthCardSub, { color: colors.textSecondary }]}>Earn $10 credit when they join</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={themeGold} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.growthCard, { backgroundColor: themeGold + '12', borderColor: themeGold + '44' }]}
+            onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/sponsor-mission' as any); }}
+            activeOpacity={0.88}
+          >
+            <Ionicons name="flag" size={20} color={themeGold} />
+            <View style={styles.growthCardText}>
+              <Text style={[styles.growthCardTitle, { color: colors.text }]}>Mission Boost</Text>
+              <Text style={[styles.growthCardSub, { color: colors.textSecondary }]}>Pay 200 OT → appear in 50 user missions today</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={themeGold} />
+          </TouchableOpacity>
+        </View>
+
+        {/* OVERVIEW — ROI Hero (compact) */}
+        <PartnerFrostedCard borderColor={tierColor} style={styles.roiHeroCard}>
+          <View style={styles.roiHeroContent}>
+            <View style={styles.roiHeroLeft}>
+              <TouchableOpacity style={styles.statLabelRow} onPress={() => Alert.alert('OrbTap ROI', 'Estimated return based on $35 average customer value per redemption.')} hitSlop={8}>
+                <Text style={[styles.roiHeroLabel, { color: colors.textSecondary }]}>YOUR ORBTAP ROI</Text>
+                <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
+              </TouchableOpacity>
+              {analyticsLoading ? (
+                <StatSkeleton color={tierColor} width={80} height={40} />
+              ) : (
+                <>
+                  <Text style={[styles.roiHeroMultiplier, { color: tierColor }]}>
+                    {roi.redemptions > 0 && analytics?.views
+                      ? `${Math.max(1, Math.round((roi.redemptions * 35) / Math.max(1, isPremiumPartner ? 49.99 : 0.01))).toFixed(1)}×`
+                      : isPremiumPartner ? 'Tracking...' : 'Free'}
+                  </Text>
+                  <Text style={[styles.roiHeroSub, { color: colors.textSecondary }]}>
+                    {roi.redemptions > 0 ? `${roi.redemptions} verified visit${roi.redemptions !== 1 ? 's' : ''} this period` : 'Scan your first QR to see ROI'}
+                  </Text>
+                </>
+              )}
+            </View>
+            <View style={styles.roiHeroRight}>
+              <View style={[styles.roiHeroIconWrap, { backgroundColor: tierColor + '22' }]}>
+                <Ionicons name="trending-up" size={28} color={tierColor} />
+              </View>
+              {!isPremiumPartner && (
+                <TouchableOpacity
+                  style={[styles.roiUpgradeBtn, { backgroundColor: themeGold, }]}
+                  onPress={() => { safeHaptics.selectionAsync(); router.push('/compare-accounts' as any); }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.roiUpgradeBtnText}>Upgrade</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </PartnerFrostedCard>
+
         <SectionTitle title="YOUR IMPACT" />
         <View style={styles.impactGrid}>
           <View style={styles.impactRow}>
@@ -439,7 +618,7 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
               <View style={styles.statCardContent}>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Profile views</Text>
                 {analyticsLoading ? (
-                  <ActivityIndicator size="small" color={colors.textSecondary} style={{ marginVertical: 6 }} />
+                  <StatSkeleton color={colors.textSecondary} />
                 ) : (
                   <Text style={[styles.statValue, { color: colors.text }]}>{analytics?.views ?? roi.views}</Text>
                 )}
@@ -448,9 +627,12 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
             </PartnerFrostedCard>
             <PartnerFrostedCard borderColor={tierColor} style={[styles.statCardHalf, styles.frostedStatCard]}>
               <View style={styles.statCardContent}>
-                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Follows</Text>
+                <TouchableOpacity style={styles.statLabelRow} onPress={() => Alert.alert('Follows', 'Users who bookmarked your page for quick access.')} hitSlop={8}>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Follows</Text>
+                  <Ionicons name="information-circle-outline" size={12} color={colors.textSecondary} />
+                </TouchableOpacity>
                 {analyticsLoading ? (
-                  <ActivityIndicator size="small" color={colors.textSecondary} style={{ marginVertical: 6 }} />
+                  <StatSkeleton color={colors.textSecondary} />
                 ) : (
                   <Text style={[styles.statValue, { color: colors.text }]}>{analytics?.follows ?? 0}</Text>
                 )}
@@ -463,14 +645,14 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
               <View style={styles.statCardContent}>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Redemptions</Text>
                 <Text style={[styles.statValue, { color: tierColor }]}>{roi.redemptions}</Text>
-                <Text style={[styles.periodHint, { color: colors.textSecondary }]}>This session</Text>
+                <Text style={[styles.periodHint, { color: colors.textSecondary }]}>{isPremiumPartner ? 'Last 30 days' : 'Last 7 days'}</Text>
               </View>
             </PartnerFrostedCard>
             <PartnerFrostedCard borderColor={tierColor} style={[styles.statCardHalf, styles.frostedStatCard]}>
               <View style={styles.statCardContent}>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Missions done</Text>
                 {analyticsLoading ? (
-                  <ActivityIndicator size="small" color={colors.textSecondary} style={{ marginVertical: 6 }} />
+                  <StatSkeleton color={colors.textSecondary} />
                 ) : (
                   <Text style={[styles.statValue, { color: colors.text }]}>{analytics?.missionsCompleted ?? 0}</Text>
                 )}
@@ -514,6 +696,22 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
                 { label: 'R', value: analytics?.reviews ?? 0, hint: 'Reviews' },
                 { label: 'M', value: analytics?.missionsCompleted ?? 0, hint: 'Missions' },
               ];
+              const allZero = metrics.every((m) => m.value === 0);
+              if (allZero) {
+                return (
+                  <View style={styles.chartEmpty}>
+                    <Text style={[styles.chartEmptyText, { color: colors.textSecondary }]}>
+                      No activity yet. Share your page to get your first view.
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => Share.share({ message: `Check out ${partner?.name ?? 'us'} on OrbTap!` })}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.chartEmptyAction, { color: tierColor }]}>Share now →</Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              }
               const maxVal = Math.max(1, ...metrics.map((m) => m.value));
               return (
                 <View style={styles.barChart}>
@@ -562,7 +760,7 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
           </TouchableOpacity>
         )}
 
-        {/* QUICK ACTIONS — Your tools */}
+        {/* Section 4 — Tools Grid with notification badges */}
         <SectionTitle title="YOUR TOOLS" right={taskCount > 0 ? <Text style={[styles.taskCountBadge, { color: COLORS.danger }]}>{taskCount}</Text> : null} />
         <View style={styles.actionsBlock}>
           <TouchableOpacity onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/perks' as any); }} activeOpacity={0.88} style={styles.actionCardWrap}>
@@ -575,8 +773,17 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
               <View style={[styles.actionIconWrap, { backgroundColor: tierColor + '22' }]}>
                 <Ionicons name="pricetag" size={22} color={tierColor} />
               </View>
-              <Text style={[styles.actionLabel, { color: colors.text }]}>Perks</Text>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>Manage Perks</Text>
               <Text style={[styles.actionHint, { color: colors.textSecondary }]}>Add and manage perks customers can redeem</Text>
+            </PartnerFrostedCard>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { safeHaptics.selectionAsync(); setShowPartnerQR(true); }} activeOpacity={0.88}>
+            <PartnerFrostedCard borderColor={tierColor} style={styles.actionCard}>
+              <View style={[styles.actionIconWrap, { backgroundColor: tierColor + '22' }]}>
+                <Ionicons name="qr-code-outline" size={22} color={tierColor} />
+              </View>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>Your QR Code</Text>
+              <Text style={[styles.actionHint, { color: colors.textSecondary }]}>Display at counter — customers scan to earn OT</Text>
             </PartnerFrostedCard>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/invite-sphere' as any); }} activeOpacity={0.88}>
@@ -595,6 +802,20 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
               </View>
               <Text style={[styles.actionLabel, { color: colors.text }]}>View your page</Text>
               <Text style={[styles.actionHint, { color: colors.textSecondary }]}>See how customers see you</Text>
+            </PartnerFrostedCard>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { safeHaptics.selectionAsync(); router.push(`/partner/reviews/${partnerId}` as any); }} activeOpacity={0.88} style={styles.actionCardWrap}>
+            <PartnerFrostedCard borderColor={tierColor} style={styles.actionCard}>
+              {partnerReviews.length > 0 && (
+                <View style={[styles.actionBadge, { backgroundColor: tierColor }]}>
+                  <Text style={styles.actionBadgeText}>{partnerReviews.length}</Text>
+                </View>
+              )}
+              <View style={[styles.actionIconWrap, { backgroundColor: tierColor + '22' }]}>
+                <Ionicons name="star-outline" size={22} color={tierColor} />
+              </View>
+              <Text style={[styles.actionLabel, { color: colors.text }]}>Reviews</Text>
+              <Text style={[styles.actionHint, { color: colors.textSecondary }]}>See and respond to customer reviews</Text>
             </PartnerFrostedCard>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/edit-page' as any); }} activeOpacity={0.88}>
@@ -673,10 +894,15 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
           </View>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.settingsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          style={[styles.settingsCard, { backgroundColor: colors.surface, borderColor: colors.border, position: 'relative' as const }]}
           onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/polls' as any); }}
           activeOpacity={0.88}
         >
+          {pollsWithNoResponses > 0 && (
+            <View style={[styles.actionBadge, { backgroundColor: COLORS.danger }]}>
+              <Text style={styles.actionBadgeText}>{pollsWithNoResponses}</Text>
+            </View>
+          )}
           <View style={styles.settingRow}>
             <View style={[styles.settingIconWrap, { backgroundColor: tierColor + '18' }]}>
               <Ionicons name="list-outline" size={20} color={tierColor} />
@@ -688,6 +914,30 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
             <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
           </View>
         </TouchableOpacity>
+
+        {/* Group Mission Slot — partner pays to sponsor a Sphere group mission */}
+        <PartnerFrostedCard borderColor={themeGold} style={styles.settingsCard}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => {
+              safeHaptics.selectionAsync();
+              router.push('/partner/invite-sphere' as any);
+            }}
+            activeOpacity={0.88}
+          >
+            <View style={[styles.settingIconWrap, { backgroundColor: themeGold + '22' }]}>
+              <Ionicons name="people" size={20} color={themeGold} />
+            </View>
+            <View style={styles.settingTextWrap}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>Sphere Group Mission</Text>
+              <Text style={[styles.settingHint, { color: colors.textSecondary }]}>Sponsor a mission that brings an entire Sphere to your business · from $30</Text>
+            </View>
+            <View style={[styles.newBadge, { backgroundColor: themeGold }]}>
+              <Text style={styles.newBadgeText}>NEW</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={themeGold} />
+          </TouchableOpacity>
+        </PartnerFrostedCard>
         {flags.moduleStampCards && flags.stampCardsPartnerStudio && (
           <TouchableOpacity
             style={[styles.settingsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -727,10 +977,15 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
 
         {flags.isOrbOpportunitiesEnabled && (
           <TouchableOpacity
-            style={[styles.settingsCard, { backgroundColor: colors.surface, borderColor: tierColor + '40' }]}
+            style={[styles.settingsCard, { backgroundColor: colors.surface, borderColor: tierColor + '40', position: 'relative' as const }]}
             onPress={() => { safeHaptics.selectionAsync(); router.push({ pathname: '/partner/opportunities', params: { partnerId } } as any); }}
             activeOpacity={0.88}
           >
+            {pendingAppsCount > 0 && (
+              <View style={[styles.actionBadge, { backgroundColor: tierColor }]}>
+                <Text style={styles.actionBadgeText}>{pendingAppsCount}</Text>
+              </View>
+            )}
             <View style={styles.settingRow}>
               <View style={[styles.settingIconWrap, { backgroundColor: tierColor + '18' }]}>
                 <Ionicons name="briefcase-outline" size={20} color={tierColor} />
@@ -815,7 +1070,10 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
             </View>
             <Switch
               value={showOrbOpsButton}
-              onValueChange={(v) => { safeHaptics.selectionAsync(); setShowOrbOpsButton(v); }}
+              onValueChange={(v) => {
+                safeHaptics.selectionAsync();
+                partnerUpdateSelf({ partnerId, showOrbOpsButton: v }).then(() => refreshMyPartner());
+              }}
               trackColor={{ false: colors.border, true: COLORS.success + '99' }}
               thumbColor={showOrbOpsButton ? COLORS.success : colors.textSecondary}
             />
@@ -830,7 +1088,10 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
             </View>
             <Switch
               value={offersCatering}
-              onValueChange={(v) => { safeHaptics.selectionAsync(); setOffersCatering(v); }}
+              onValueChange={(v) => {
+                safeHaptics.selectionAsync();
+                partnerUpdateSelf({ partnerId, offersCatering: v }).then(() => refreshMyPartner());
+              }}
               trackColor={{ false: colors.border, true: COLORS.success + '99' }}
               thumbColor={offersCatering ? COLORS.success : colors.textSecondary}
             />
@@ -842,58 +1103,121 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
           <PartnerGrowthSuggestions partnerId={partnerId} events={orbSwipeEvents} tier={growthTier} />
         )}
 
-        {/* ROI */}
-        <SectionTitle title="ORBTAP ROI" />
-        <View style={[styles.settingsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.roiRowFirst}>
-            <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Views</Text>
-            <Text style={[styles.roiValue, { color: colors.text }]}>{roi.views}</Text>
+        {/* ROI detail */}
+        <SectionTitle title="VERIFIED VISIT FUNNEL" />
+        <PartnerFrostedCard borderColor={tierColor} style={styles.roiDetailCard}>
+          {/* Real 7/14-day sparkline from partner analytics */}
+          {isPremiumPartner && (
+            <View style={styles.sparklineRow}>
+              {dailyHistory.length > 0 ? dailyHistory.map((d, i) => {
+                const maxVal = Math.max(1, ...dailyHistory.map((x) => x.total));
+                const h = Math.max(4, Math.round((d.total / maxVal) * ANALYTICS_CHART_MAX_BAR));
+                const isToday = i === dailyHistory.length - 1;
+                return (
+                  <View
+                    key={d.date}
+                    style={[
+                      styles.sparkBar,
+                      {
+                        height: h,
+                        backgroundColor: isToday ? tierColor : tierColor + '55',
+                      },
+                    ]}
+                  />
+                );
+              }) : Array.from({ length: 7 }).map((_, i) => (
+                <View key={i} style={[styles.sparkBar, { height: 4, backgroundColor: colors.border }]} />
+              ))}
+            </View>
+          )}
+          {!isPremiumPartner && (
+            <View style={[styles.sparklineLocked, { borderColor: tierColor + '44' }]}>
+              <Ionicons name="lock-closed" size={16} color={colors.textSecondary} />
+              <Text style={[styles.sparklineLockedText, { color: colors.textSecondary }]}>30-day sparkline · Premium only</Text>
+            </View>
+          )}
+          <View style={styles.roiDetailRows}>
+            <View style={styles.roiDetailRow}>
+              <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Profile views</Text>
+              <Text style={[styles.roiValue, { color: colors.text }]}>{roi.views}</Text>
+            </View>
+            <View style={[styles.roiDetailRow, { borderTopWidth: 1, borderTopColor: colors.border }]}>
+              <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Clicks</Text>
+              <Text style={[styles.roiValue, { color: colors.text }]}>{roi.clicks}</Text>
+            </View>
+            <View style={[styles.roiDetailRow, { borderTopWidth: 1, borderTopColor: colors.border }]}>
+              <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Reserves</Text>
+              <Text style={[styles.roiValue, { color: colors.text }]}>{roi.reserves}</Text>
+            </View>
+            <View style={[styles.roiDetailRow, { borderTopWidth: 1, borderTopColor: colors.border }]}>
+              <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Redemptions</Text>
+              <Text style={[styles.roiValue, { color: COLORS.success, fontWeight: '800' }]}>{roi.redemptions}</Text>
+            </View>
+            <View style={[styles.roiDetailRow, { borderTopWidth: 1, borderTopColor: colors.border }]}>
+              <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Est. customer value</Text>
+              <Text style={[styles.roiValue, { color: tierColor, fontWeight: '800' }]}>${roi.redemptions * 35}</Text>
+            </View>
           </View>
-          <View style={[styles.roiRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Clicks</Text>
-            <Text style={[styles.roiValue, { color: colors.text }]}>{roi.clicks}</Text>
-          </View>
-          <View style={[styles.roiRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Reserves</Text>
-            <Text style={[styles.roiValue, { color: colors.text }]}>{roi.reserves}</Text>
-          </View>
-          <View style={[styles.roiRow, { borderTopColor: colors.border }]}>
-            <Text style={[styles.roiLabel, { color: colors.textSecondary }]}>Redemptions</Text>
-            <Text style={[styles.roiValue, { color: COLORS.success }]}>{roi.redemptions}</Text>
-          </View>
-          <Text style={[styles.roiHint, { color: colors.textSecondary }]}>From drops & proof flows</Text>
-        </View>
+          <Text style={[styles.roiHint, { color: colors.textSecondary }]}>
+            Estimated at $35 avg spend per verified visit
+          </Text>
+          {!isPremiumPartner && (
+            <TouchableOpacity
+              style={[styles.roiUpgradeRow, { backgroundColor: themeGold + '14', borderColor: themeGold + '55' }]}
+              onPress={() => { safeHaptics.selectionAsync(); router.push('/compare-accounts' as any); }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="lock-closed" size={15} color={themeGold} />
+              <Text style={[styles.premiumTeaserText, { color: colors.text, flex: 1 }]}>
+                Premium: Conversion funnel · Export CSV · Partner Pro badge · Featured placement
+              </Text>
+              <Ionicons name="chevron-forward" size={15} color={themeGold} />
+            </TouchableOpacity>
+          )}
+        </PartnerFrostedCard>
 
-        {/* Premium-only teaser row */}
-        {!isPremiumPartner && (
-          <View style={[styles.premiumTeaserRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
-            <Text style={[styles.premiumTeaserText, { color: colors.textSecondary }]}>
-              Premium: Conversion funnel · Export CSV · Partner Pro badge · Featured placement
-            </Text>
-          </View>
-        )}
-
-        {/* Latest intel */}
+        {/* Latest intel — real reviews only */}
         <SectionTitle title="LATEST VERIFIED INTEL" />
         <View style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.reviewHeader}>
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
-              <Text style={styles.verifiedText}>VERIFIED VISIT</Text>
-            </View>
-            <Text style={[styles.date, { color: colors.textSecondary }]}>Recent</Text>
-          </View>
-          <Text style={[styles.reviewBody, { color: colors.text }]}>
-            "Great spot. The new layout is genius. Definitely coming back for the midnight drop."
-          </Text>
-          <View style={styles.reviewerRow}>
-            <View style={[styles.avatar, { backgroundColor: colors.border }]} />
-            <Text style={[styles.reviewerName, { color: colors.text }]}>Explorer</Text>
-            <View style={{ flex: 1 }} />
-            <Ionicons name="star" size={14} color={themeGold} />
-            <Text style={[styles.rating, { color: colors.text }]}>5.0</Text>
-          </View>
+          {latestReview ? (
+            <>
+              <View style={styles.reviewHeader}>
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
+                  <Text style={styles.verifiedText}>VERIFIED VISIT</Text>
+                </View>
+                <Text style={[styles.date, { color: colors.textSecondary }]}>Recent</Text>
+              </View>
+              <Text style={[styles.reviewBody, { color: colors.text }]}>
+                "{latestReview.text}"
+              </Text>
+              <View style={styles.reviewerRow}>
+                <View style={[styles.avatar, { backgroundColor: colors.border }]} />
+                <Text style={[styles.reviewerName, { color: colors.text }]}>{latestReview.userName ?? 'Explorer'}</Text>
+                <View style={{ flex: 1 }} />
+                <Ionicons name="star" size={14} color={themeGold} />
+                <Text style={[styles.rating, { color: colors.text }]}>{latestReview.rating.toFixed(1)}</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.reviewHeader}>
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="chatbubble-outline" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.verifiedText, { color: colors.textSecondary }]}>No reviews yet</Text>
+                </View>
+              </View>
+              <Text style={[styles.reviewBody, { color: colors.textSecondary }]}>
+                Encourage your first customers to leave a verified review after their visit.
+              </Text>
+              <TouchableOpacity
+                style={[styles.reviewCta, { backgroundColor: tierColor + '22', borderColor: tierColor }]}
+                onPress={() => { safeHaptics.selectionAsync(); router.push(`/partner/reviews/${partnerId}` as any); }}
+              >
+                <Text style={[styles.reviewCtaText, { color: tierColor }]}>View reviews</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {!isPremiumPartner && (
@@ -911,6 +1235,13 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
         <View style={{ height: 32 }} />
       </ScrollView>
 
+      <PartnerPageQRModal
+        visible={showPartnerQR}
+        onClose={() => setShowPartnerQR(false)}
+        partnerId={partnerId}
+        partnerName={partner?.name}
+      />
+
       <GuidedTutorialOverlay
         visible={showDashboardTutorial}
         tutorialId="partner_dashboard"
@@ -925,6 +1256,83 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
 }
 
 const styles = StyleSheet.create({
+  // ROI Hero Card
+  roiHeroCard: { marginBottom: SPACE.md },
+  roiHeroContent: { flexDirection: 'row', alignItems: 'center', padding: SPACE.base },
+  roiHeroLeft: { flex: 1 },
+  roiHeroLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2, marginBottom: SPACE.xs },
+  roiHeroMultiplier: { fontSize: 40, fontWeight: '900', letterSpacing: -1 },
+  roiHeroSub: { fontSize: 12, fontWeight: '500', marginTop: 2 },
+  roiHeroRight: { alignItems: 'center', gap: SPACE.sm },
+  roiHeroIconWrap: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  roiUpgradeBtn: { paddingVertical: SPACE.xs + 2, paddingHorizontal: SPACE.md, borderRadius: RADIUS.full },
+  roiUpgradeBtnText: { fontSize: 12, fontWeight: '800', color: '#000' },
+  // ROI detail sparkline
+  roiDetailCard: { marginBottom: SPACE.md },
+  sparklineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 3,
+    height: 48,
+    paddingHorizontal: SPACE.base,
+    paddingTop: SPACE.base,
+    paddingBottom: SPACE.sm,
+  },
+  sparkBar: { flex: 1, borderRadius: RADIUS.xs - 3 },
+  sparklineLocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.xs + 2,
+    margin: SPACE.base,
+    marginBottom: SPACE.sm,
+    borderWidth: 1,
+    borderRadius: RADIUS.sm,
+    borderStyle: 'dashed',
+    padding: SPACE.sm + 2,
+    justifyContent: 'center',
+  },
+  sparklineLockedText: { fontSize: 12, fontWeight: '500' },
+  roiDetailRows: { paddingHorizontal: SPACE.base, paddingTop: SPACE.xs },
+  roiDetailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: SPACE.sm + 2 },
+  roiUpgradeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.sm,
+    margin: SPACE.base,
+    marginTop: SPACE.sm,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    padding: SPACE.sm + 2,
+  },
+  // NEW badge
+  newBadge: { borderRadius: RADIUS.sm, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'center' },
+  newBadgeText: { fontSize: 9, fontWeight: '900', color: '#000', letterSpacing: 0.5 },
+  // Hot Spot CTA
+  hotSpotCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.md,
+    borderRadius: RADIUS.base,
+    borderWidth: 1,
+    padding: SPACE.md,
+    marginBottom: SPACE.base,
+  },
+  hotSpotIconWrap: { width: 40, height: 40, borderRadius: RADIUS.full, alignItems: 'center', justifyContent: 'center' },
+  hotSpotText: { flex: 1 },
+  hotSpotTitle: { fontSize: 14, fontWeight: '800' },
+  hotSpotSub: { fontSize: 12, fontWeight: '400', marginTop: 2 },
+  growthOpportunitiesBlock: { gap: 10, marginBottom: 20 },
+  growthCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  growthCardText: { flex: 1 },
+  growthCardTitle: { fontSize: 14, fontWeight: '800' },
+  growthCardSub: { fontSize: 12, marginTop: 2 },
   container: { flex: 1 },
   header: {
     flexDirection: 'row',
@@ -1009,6 +1417,20 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
   lockHint: { fontSize: 10, fontWeight: '600' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: CARD_GAP, marginBottom: 18 },
+  heroSnapshotGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: CARD_GAP,
+    marginBottom: 18,
+  },
+  heroStatCard: {
+    width: '48%',
+    minWidth: 0,
+    padding: 14,
+    borderRadius: 12,
+  },
+  heroStatLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginBottom: 4 },
+  heroStatValue: { fontSize: 22, fontWeight: '900' },
   impactGrid: { marginBottom: 18 },
   impactRow: { flexDirection: 'row', gap: CARD_GAP, marginBottom: CARD_GAP },
   statCardHalf: { flex: 1, minWidth: 0 },
@@ -1037,6 +1459,10 @@ const styles = StyleSheet.create({
   upgradeCtaText: { fontSize: 13, fontWeight: '700', flex: 1 },
   chartCard: { marginBottom: 20 },
   chartCardInner: { padding: 16 },
+  chartEmpty: { paddingVertical: 24, alignItems: 'center', gap: 8 },
+  chartEmptyText: { fontSize: 13, textAlign: 'center' },
+  chartEmptyAction: { fontSize: 14, fontWeight: '700' },
+  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   barChart: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end', height: 96, paddingHorizontal: 8 },
   barColumn: { alignItems: 'center', gap: 4, flex: 1 },
   barFill: { width: 28, borderRadius: 6 },
@@ -1107,6 +1533,8 @@ const styles = StyleSheet.create({
   date: { fontSize: 10 },
   reviewBody: { fontSize: 14, fontStyle: 'italic', marginBottom: 14, lineHeight: 20 },
   reviewerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reviewCta: { alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, marginTop: 8 },
+  reviewCtaText: { fontSize: 13, fontWeight: '700' },
   avatar: { width: 28, height: 28, borderRadius: 14 },
   reviewerName: { fontSize: 12, fontWeight: 'bold' },
   rating: { fontSize: 12, fontWeight: 'bold' },
