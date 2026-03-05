@@ -1,87 +1,263 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { COLORS } from '../constants/Colors';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
+import { safeHaptics, Haptics } from '../utils/safeHaptics';
+import { useEffectiveTier } from '../hooks/useEffectiveTier';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedProps,
+  withRepeat,
+  withTiming,
   withSequence,
-  cancelAnimation
+  withSpring,
+  Easing,
+  interpolateColor,
 } from 'react-native-reanimated';
-import { OrbIcon } from './AppLogos'; // USING NEW BRAND KIT
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+
+/** Hold duration to open Scan on Orb tab. Other tabs use SUBMENU_LONG_PRESS_MS = this minus 500ms. */
+export const ORB_LONG_PRESS_MS = 1000;
+export const SUBMENU_LONG_PRESS_MS = ORB_LONG_PRESS_MS - 500;
+
+const LONG_PRESS_MS = ORB_LONG_PRESS_MS;
+
+const ORB_SIZE = 64;
+const ORB_R = ORB_SIZE / 2;
+
+// Mystical pulse: blue → magenta → gold → blue (barely noticeable, 7s cycle)
+const PULSE_COLORS = [
+  COLORS.neonBlue[0],
+  '#a855f7', // magenta/purple
+  COLORS.gold[0],
+  COLORS.neonBlue[0],
+];
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export const TabBarOrb = () => {
   const router = useRouter();
+  const { isPartner } = useEffectiveTier();
+  const orbRoute = isPartner ? '/(tabs)/partner-orb' : '/(tabs)/orb';
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const scale = useSharedValue(1);
+  const colorPhase = useSharedValue(0);
+  const breathScale = useSharedValue(1);
+  const breathOpacity = useSharedValue(0.35);
+  const tapPulseScale = useSharedValue(0);
+  const tapPulseOpacity = useSharedValue(0);
 
   useEffect(() => {
-    cancelAnimation(scale);
-    scale.value = withRepeat(
+    colorPhase.value = withRepeat(
+      withTiming(1, { duration: 7000, easing: Easing.linear }),
+      -1,
+      false
+    );
+    breathScale.value = withRepeat(
       withSequence(
-        withTiming(1.05, { duration: 2000 }),
-        withTiming(1, { duration: 2000 })
+        withTiming(1.28, { duration: 1600, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+    breathOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.5, { duration: 1600 }),
+        withTiming(0.18, { duration: 1600 })
       ),
       -1,
       true
     );
   }, []);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }]
+  const runTapPulse = () => {
+    tapPulseScale.value = 0;
+    tapPulseOpacity.value = 0.7;
+    tapPulseScale.value = withTiming(2.2, { duration: 2000, easing: Easing.out(Easing.ease) });
+    tapPulseOpacity.value = withTiming(0, { duration: 2000 });
+  };
+
+  const animatedOrbStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
   }));
 
+  const animatedGlowStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      colorPhase.value,
+      [0, 0.33, 0.66, 1],
+      PULSE_COLORS
+    );
+    return {
+      shadowColor: color,
+      shadowOpacity: 0.45 + breathOpacity.value * 0.35,
+      shadowRadius: 10 + breathScale.value * 2,
+    };
+  });
+
+  const animatedBreathStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      colorPhase.value,
+      [0, 0.33, 0.66, 1],
+      PULSE_COLORS
+    );
+    return {
+      transform: [{ scale: breathScale.value }],
+      opacity: breathOpacity.value,
+      borderColor: color,
+    };
+  });
+
+  const animatedTapPulseStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      colorPhase.value,
+      [0, 0.33, 0.66, 1],
+      PULSE_COLORS
+    );
+    return {
+      transform: [{ scale: tapPulseScale.value }],
+      opacity: tapPulseOpacity.value,
+      borderColor: color,
+      backgroundColor: color + '30',
+    };
+  });
+
+  const animatedCoreProps = useAnimatedProps(() => {
+    const fill = interpolateColor(
+      colorPhase.value,
+      [0, 0.33, 0.66, 1],
+      PULSE_COLORS
+    );
+    return { fill };
+  });
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handlePressIn = () => {
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    scale.value = withSpring(0.88, { damping: 15 });
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null;
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.push('/(tabs)/scan' as any);
+    }, LONG_PRESS_MS);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1);
+    clearLongPress();
+  };
+
+  useEffect(() => () => clearLongPress(), []);
+
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(tabs)/orb');
+    clearLongPress();
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    runTapPulse();
+    router.push(orbRoute as any);
   };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        activeOpacity={0.9} 
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Home, hold for Scan"
         onPress={handlePress}
-        style={styles.touchable}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.pressable}
       >
-        <Animated.View style={[styles.glow, animatedStyle]}>
-           <LinearGradient
-              colors={['#111', '#000']}
-              style={styles.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-           >
-              {/* THE NEW LOGO ICON */}
-              <OrbIcon size={40} />
-           </LinearGradient>
+        <Animated.View style={[styles.tapPulseRing, animatedTapPulseStyle]} />
+        <Animated.View style={[styles.breathRing, animatedBreathStyle]} />
+        <Animated.View style={[styles.glow, animatedGlowStyle, animatedOrbStyle]}>
+          <View style={styles.sphereWrap}>
+            <Svg width={ORB_SIZE} height={ORB_SIZE} viewBox={`0 0 ${ORB_SIZE} ${ORB_SIZE}`}>
+              <Defs>
+                <RadialGradient
+                  id="orbSphere"
+                  cx="35%"
+                  cy="35%"
+                  r="65%"
+                  fx="32%"
+                  fy="32%"
+                >
+                  <Stop offset="0%" stopColor="rgba(255,255,255,0.35)" stopOpacity={1} />
+                  <Stop offset="45%" stopColor="#1e293b" stopOpacity={1} />
+                  <Stop offset="100%" stopColor="#0f172a" stopOpacity={1} />
+                </RadialGradient>
+              </Defs>
+              <Circle
+                cx={ORB_R}
+                cy={ORB_R}
+                r={ORB_R - 1}
+                fill="url(#orbSphere)"
+                stroke="rgba(255,255,255,0.12)"
+                strokeWidth={1}
+              />
+              <AnimatedCircle
+                cx={ORB_R}
+                cy={ORB_R}
+                r={10}
+                animatedProps={animatedCoreProps}
+                opacity={0.95}
+              />
+            </Svg>
+          </View>
         </Animated.View>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { top: -20, alignItems: 'center', justifyContent: 'center' },
-  touchable: { width: 70, height: 70, alignItems: 'center', justifyContent: 'center' },
-  glow: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    shadowColor: COLORS.neonBlue[0],
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 10,
-    backgroundColor: '#000'
-  },
-  gradient: {
-    flex: 1,
-    borderRadius: 32,
+  container: {
+    top: -24,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  }
+    zIndex: 10,
+    elevation: 10,
+  },
+  pressable: {
+    width: 70,
+    height: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tapPulseRing: {
+    position: 'absolute',
+    width: ORB_SIZE,
+    height: ORB_SIZE,
+    borderRadius: ORB_R,
+    borderWidth: 2,
+  },
+  breathRing: {
+    position: 'absolute',
+    width: ORB_SIZE,
+    height: ORB_SIZE,
+    borderRadius: ORB_R,
+    borderWidth: 1.5,
+  },
+  glow: {
+    width: ORB_SIZE,
+    height: ORB_SIZE,
+    borderRadius: ORB_R,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 12,
+    backgroundColor: '#0a0a12',
+    overflow: 'hidden',
+  },
+  sphereWrap: {
+    width: ORB_SIZE,
+    height: ORB_SIZE,
+    borderRadius: ORB_R,
+    overflow: 'hidden',
+  },
 });

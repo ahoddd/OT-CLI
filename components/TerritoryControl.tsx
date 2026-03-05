@@ -7,6 +7,7 @@ import { useTheme } from '../hooks/useTheme';
 
 export const TerritoryControl = ({ sphereName = "Neon Raiders" }) => {
   const { colors, isDark } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -32,8 +33,8 @@ export const TerritoryControl = ({ sphereName = "Neon Raiders" }) => {
                 <Text style={[styles.sphereName, { color: colors.text }]}>{sphereName}</Text>
             </View>
             <View style={{ flex: 1 }} />
-            <View style={styles.bonusBadge}>
-                <Text style={styles.bonusText}>1.5x XP</Text>
+            <View style={[styles.bonusBadge, { borderColor: themeGold }]}>
+                <Text style={[styles.bonusText, { color: themeGold }]}>1.5x XP</Text>
             </View>
         </View>
         
@@ -58,8 +59,8 @@ const styles = StyleSheet.create({
   sphereIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   controlledBy: { fontSize: 10, fontWeight: 'bold' },
   sphereName: { fontSize: 16, fontWeight: '900' },
-  bonusBadge: { backgroundColor: 'rgba(251, 191, 36, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: COLORS.gold[0] },
-  bonusText: { color: COLORS.gold[0], fontWeight: 'bold', fontSize: 12 },
+  bonusBadge: { backgroundColor: 'rgba(251, 191, 36, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
+  bonusText: { fontWeight: 'bold', fontSize: 12 },
   progressContainer: { flexDirection: 'row', height: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 6 },
   progressBar: { height: '100%' },
   progressText: { fontSize: 10, textAlign: 'right', fontWeight: 'bold' }

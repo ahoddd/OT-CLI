@@ -188,21 +188,8 @@ export default function SettingsScreen() {
     if (rtlChanged) {
       setRtlRestartModalVisible(true);
     } else {
-      Alert.alert(
-        t('settings.languageUpdatedTitle'),
-        t('settings.languageUpdatedMessage'),
-        [
-          { text: t('settings.later'), style: 'cancel' },
-          {
-            text: t('settings.restartNow'),
-            onPress: () => {
-              if (Platform.OS !== 'web' && NativeModules.DevSettings?.reload) {
-                NativeModules.DevSettings.reload();
-              }
-            },
-          },
-        ]
-      );
+      // Non-RTL change: UI already re-renders via context; no restart needed
+      Alert.alert(t('settings.languageUpdatedTitle'), '', [{ text: t('common.done') || 'OK' }]);
     }
   };
 
@@ -868,9 +855,8 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 120 },
   accordionCard: { marginBottom: 12 },
   sectionTitle: { fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 8, marginTop: 16, marginLeft: 4 },
-  sectionTitleLight: { fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 8, marginTop: 16, marginLeft: 4, color: '#888' },
+  sectionTitleLight: { fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 8, marginTop: 16, marginLeft: 4 },
   card: { borderRadius: 16, overflow: 'hidden', borderWidth: 1 },
-  dangerCard: { backgroundColor: '#111', borderColor: '#EF4444', borderWidth: 2, padding: 16 },
   row: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1 },
   iconBox: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   rowContent: { flex: 1 },

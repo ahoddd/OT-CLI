@@ -4,9 +4,12 @@ Reference config for the OrbTap project. Use this for local/dev; in production p
 
 ## Project config (client)
 
+**Do not put API keys in source.** Use environment variables only. See `.env.example`.
+
 ```js
+// firebaseConfig.ts reads from process.env; example shape:
 const firebaseConfig = {
-  apiKey: "AIzaSyCaYOzOPnjEwfylnCV9AwDhB42fpQ-CNZU",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,  // required; set in .env
   authDomain: "orbtap.firebaseapp.com",
   projectId: "orbtap",
   storageBucket: "orbtap.firebasestorage.app",
@@ -46,8 +49,38 @@ If these are set, `firebaseConfig.ts` uses them; otherwise it uses the default c
 
 ## Firestore rules and indexes
 
-- **Rules:** `firestore.rules` at project root defines read/write for users, friends, friend requests, sphere messages, redemption tokens, and partners. Deploy with `firebase deploy --only firestore:rules` after adding Firestore to your project.
-- **Chat index:** For sphere chat, create a composite index in Firebase Console: Collection `spheres/{sphereId}/messages`, fields `at` (Ascending), limit 200. Or deploy via `firebase firestore:indexes` if you add an `firestore.indexes.json`.
+- **Firestore rules:** `firestore.rules` at project root defines read/write for all OrbTap collections: users (and subcollections), sphere messages, partners, perks, verification/redemption (backend only), ledgers/verifiedActions/arena/work orders (backend only), polls, posts, globalAnnouncements, supportRequests, dataDeletionRequests, partnerApplications, config, and rate-limit/invite/backend collections. Deploy with `firebase deploy --only firestore:rules`.
+- **Storage rules:** `storage.rules` allows partner post images (`posts/{partnerId}/**`), menu uploads (`menus/{partnerId}/**`), user avatars (`users/{userId}/**`), and featured images (`featured/**`). Deploy with `firebase deploy --only storage` so partner Create Post and menu uploads work.
+- **Menu upload path:** Rules require `request.auth.uid == partnerId` for `menus/{partnerId}/**`. The app passes the signed-in user’s UID as the path segment when uploading (`storagePathUid` in `uploadMenuImage`), so production uploads succeed. Demo/mock can use a test user whose UID matches the mock partner id (e.g. `p1`).
+- **Indexes:** `firestore.indexes.json` defines composite indexes for globalAnnouncements, polls, posts, workOrders, arenaVotes, ledger entries (collection group), proofPacks, and sphere messages (collection group). Deploy with `firebase deploy --only firestore:indexes`. New indexes may take a few minutes to build.
+- **Full list:** See **[FIRESTORE_COLLECTIONS_DEPLOY.md](./FIRESTORE_COLLECTIONS_DEPLOY.md)** for every collection, who uses it, and the deploy checklist.
+
+## Verification emails (6-digit signup codes)
+
+Signup sends a 6-digit code to the user's email via **Resend** from **orbtap.com**. See **[VERIFICATION_EMAIL_SETUP.md](./VERIFICATION_EMAIL_SETUP.md)** for:
+
+- Adding and verifying orbtap.com in Resend
+- Setting `env.resend_api_key`, `env.orbtap_from_email`, and `env.encryption_key`
+- Redeploying functions after config changes
+
+## Redeploying Cloud Functions
+
+After changing function code or config, build and deploy:
+
+```bash
+cd functions && npm run build && cd .. && firebase deploy --only functions
+```
+
+Full steps and one-off deploys: **[DEPLOY_CLOUD_FUNCTIONS.md](./DEPLOY_CLOUD_FUNCTIONS.md)**.
+
+## Login fails after changing API key
+
+If sign-in worked before and stops after rotating the Firebase API key:
+
+1. **.env** — Ensure `EXPO_PUBLIC_FIREBASE_API_KEY` is set to the **new** key (no quotes). Restart the dev server after changing `.env`.
+2. **Google Cloud Console** — [APIs & Services → Credentials](https://console.cloud.google.com/apis/credentials): the key in `.env` must exist and **API restrictions** must include **Identity Toolkit API** (Firebase Auth). If you restricted the key to specific APIs and left this out, login will fail.
+3. **Application restrictions** — If you restricted the key to "iOS apps" or "Android apps", the bundle ID / package name must be `com.orbtap.app` and (for Android) the signing certificate SHA-1 must be added. Testing from a different platform (e.g. web or Expo Go) may be blocked until that platform is allowed.
+4. **Firebase Console** — [Authentication → Sign-in method](https://console.firebase.google.com/project/orbtap/authentication/providers): ensure **Email/Password** (or the method you use) is **Enabled**.
 
 ## Security
 

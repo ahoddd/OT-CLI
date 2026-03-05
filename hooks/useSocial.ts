@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MOCK_PARTNERS } from '../constants/MockData';
+import { usePartners } from '../context/PartnersContext';
+import { useEffectiveTier } from './useEffectiveTier';
 import { SPHERE_XP_PER_SOURCE } from '../constants/SphereLevels';
+
+const MAX_CIRCLES: Record<'free' | 'premium' | 'pro', number> = { free: 2, premium: 10, pro: Infinity };
+const MAX_FOLLOWS: Record<'free' | 'premium' | 'pro', number> = { free: 3, premium: Infinity, pro: Infinity };
 
 const SOCIAL_KEY = 'ORBTAP_SOCIAL_V2';
 
@@ -33,6 +37,16 @@ export interface Circle {
   missionsCompletedCount: number;
   /** If false, sphere is hidden from profile and from "Spheres" count on profile. */
   isPublic: boolean;
+  /** When we have public sphere profiles: show stats to non-members (default true). */
+  showStatsPublic?: boolean;
+  /** When we have public sphere profiles: show member list/count to non-members (default true). */
+  showMembersPublic?: boolean;
+  /** When we have public sphere profiles: show achievements to non-members (default true). */
+  showAchievementsPublic?: boolean;
+  /** Timestamp (ms) when the sphere was created. Shown on public profile as "Sphere established on ...". */
+  createdAt?: number;
+  /** Subscription tier of the sphere (from creator or majority of members). Free | Premium | Pro — drives 3-tier color/label. */
+  sphereTier?: 'free' | 'premium' | 'pro';
 }
 
 const DEFAULT_CIRCLES: Circle[] = [
@@ -51,6 +65,8 @@ const DEFAULT_CIRCLES: Circle[] = [
     verifiedVisitsCount: 8,
     missionsCompletedCount: 4,
     isPublic: true,
+    createdAt: Date.now() - 90 * 86400000,
+    sphereTier: 'premium',
   },
   {
     id: 'c2',
@@ -65,6 +81,8 @@ const DEFAULT_CIRCLES: Circle[] = [
     verifiedVisitsCount: 22,
     missionsCompletedCount: 12,
     isPublic: true,
+    createdAt: Date.now() - 60 * 86400000,
+    sphereTier: 'free',
   },
 ];
 
@@ -83,6 +101,7 @@ export const useSocial = () => {
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [circles, setCircles] = useState<Circle[]>([]);
   const [loading, setLoading] = useState(true);
+  const { tier } = useEffectiveTier();
 
   useEffect(() => {
     loadSocial();
@@ -108,13 +127,18 @@ export const useSocial = () => {
           verifiedVisitsCount: c.verifiedVisitsCount ?? 0,
           missionsCompletedCount: c.missionsCompletedCount ?? 0,
           isPublic: c.isPublic !== false,
+          showStatsPublic: c.showStatsPublic !== false,
+          showMembersPublic: c.showMembersPublic !== false,
+          showAchievementsPublic: c.showAchievementsPublic !== false,
+          createdAt: typeof c.createdAt === 'number' ? c.createdAt : undefined,
+          sphereTier: c.sphereTier === 'premium' || c.sphereTier === 'pro' ? c.sphereTier : 'free',
         })));
       } else {
         setCircles(DEFAULT_CIRCLES);
         saveSocial([], DEFAULT_CIRCLES);
       }
     } catch (e) {
-      console.error('Social load failed', e);
+      if (__DEV__) console.error('Social load failed', e);
       setCircles(DEFAULT_CIRCLES);
     } finally {
       setLoading(false);
@@ -125,23 +149,40 @@ export const useSocial = () => {
     try {
       await AsyncStorage.setItem(SOCIAL_KEY, JSON.stringify({ followingIds: newFollowing, circles: newCircles }));
     } catch (e) {
-      console.error('Social save failed', e);
+      if (__DEV__) console.error('Social save failed', e);
     }
   }, []);
 
-  const toggleFollow = (partnerId: string) => {
-    const newFollowing = followingIds.includes(partnerId)
+  const toggleFollow = (partnerId: string): { success: boolean; error?: 'limit_reached' } => {
+    const isCurrentlyFollowing = followingIds.includes(partnerId);
+    if (!isCurrentlyFollowing) {
+      const limit = MAX_FOLLOWS[tier];
+      if (followingIds.length >= limit) {
+        return { success: false, error: 'limit_reached' };
+      }
+    }
+    const newFollowing = isCurrentlyFollowing
       ? followingIds.filter(id => id !== partnerId)
       : [...followingIds, partnerId];
     setFollowingIds(newFollowing);
     saveSocial(newFollowing, circles);
+    return { success: true };
   };
 
   const isFollowing = (partnerId: string) => followingIds.includes(partnerId);
 
-  const getFollowedPartners = () => MOCK_PARTNERS.filter(p => followingIds.includes(p.id));
+  const { partners } = usePartners();
+  const getFollowedPartners = () => partners.filter(p => followingIds.includes(p.id));
 
-  const createCircle = (name: string, type: Circle['type']) => {
+  const createCircle = (
+    name: string,
+    type: Circle['type'],
+    creatorTier: 'free' | 'premium' | 'pro' = 'free',
+  ): { success: true; circle: Circle } | { success: false; error: 'limit_reached'; limit: number } => {
+    const limit = MAX_CIRCLES[tier];
+    if (circles.length >= limit) {
+      return { success: false, error: 'limit_reached', limit };
+    }
     const newCircle: Circle = {
       id: generateId(),
       name,
@@ -155,11 +196,16 @@ export const useSocial = () => {
       verifiedVisitsCount: 0,
       missionsCompletedCount: 0,
       isPublic: true,
+      showStatsPublic: true,
+      showMembersPublic: true,
+      showAchievementsPublic: true,
+      createdAt: Date.now(),
+      sphereTier: creatorTier,
     };
     const newCircles = [...circles, newCircle];
     setCircles(newCircles);
     saveSocial(followingIds, newCircles);
-    return newCircle;
+    return { success: true, circle: newCircle };
   };
 
   const joinByCode = (code: string, memberName: string): Circle | null => {
@@ -239,6 +285,12 @@ export const useSocial = () => {
 
   const getCircle = (id: string) => circles.find(c => c.id === id);
 
+  /** Find a circle by invite code (normalized: ignores spaces and dashes). For QR / join links. */
+  const getCircleByInviteCode = (code: string): Circle | undefined => {
+    const normalized = code.replace(/\s/g, '').replace(/-/g, '').toUpperCase();
+    return circles.find(c => c.inviteCode.replace(/-/g, '') === normalized);
+  };
+
   const getPublicCircles = () => circles.filter(c => c.isPublic !== false);
 
   const setSphereVisibility = (circleId: string, isPublic: boolean) => {
@@ -247,6 +299,45 @@ export const useSocial = () => {
     );
     setCircles(newCircles);
     saveSocial(followingIds, newCircles);
+  };
+
+  /** Update a sphere's display name. */
+  const updateCircleName = (circleId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
+    const newCircles = circles.map(c =>
+      c.id === circleId ? { ...c, name: trimmed } : c
+    );
+    setCircles(newCircles);
+    saveSocial(followingIds, newCircles);
+    return true;
+  };
+
+  /** Update what is shown on the sphere's public profile (stats, members, achievements). Default true. */
+  const updateCirclePublicProfileVisibility = (
+    circleId: string,
+    opts: { showStatsPublic?: boolean; showMembersPublic?: boolean; showAchievementsPublic?: boolean }
+  ) => {
+    const newCircles = circles.map(c => {
+      if (c.id !== circleId) return c;
+      return {
+        ...c,
+        ...(opts.showStatsPublic !== undefined && { showStatsPublic: opts.showStatsPublic }),
+        ...(opts.showMembersPublic !== undefined && { showMembersPublic: opts.showMembersPublic }),
+        ...(opts.showAchievementsPublic !== undefined && { showAchievementsPublic: opts.showAchievementsPublic }),
+      };
+    });
+    setCircles(newCircles);
+    saveSocial(followingIds, newCircles);
+  };
+
+  /** Delete a sphere by id. Returns true if deleted. */
+  const deleteCircle = (circleId: string) => {
+    const newCircles = circles.filter(c => c.id !== circleId);
+    if (newCircles.length === circles.length) return false;
+    setCircles(newCircles);
+    saveSocial(followingIds, newCircles);
+    return true;
   };
 
   return {
@@ -263,8 +354,12 @@ export const useSocial = () => {
     addPost,
     togglePostLike,
     getCircle,
+    getCircleByInviteCode,
     getPublicCircles,
     setSphereVisibility,
+    updateCircleName,
+    updateCirclePublicProfileVisibility,
+    deleteCircle,
     saveSocial,
   };
 };

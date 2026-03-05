@@ -13,6 +13,7 @@ import { useDrops } from '../../hooks/useDrops';
 import { useStampCards } from '../../hooks/useStampCards';
 import { PremiumCard } from '../../components/PremiumCard';
 import { WalletActions } from '../../components/Wallet/WalletActions';
+import { OrbBankTile } from '../../components/Wallet/OrbBankTile';
 import { ScreenWrapper } from '../../components/ScreenWrapper';
 import { OTPointsBadge } from '../../components/OTPointsBadge';
 import { OrbTapLogoMark } from '../../components/OrbTapLogoMark';
@@ -28,6 +29,7 @@ import { useNextPerkGoal } from '../../hooks/useNextPerkGoal';
 import { useOrbProofStreak } from '../../hooks/useOrbProofStreak';
 import { useCurrentUserProfile } from '../../hooks/useCurrentUserProfile';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '../../context/I18nContext';
 import Animated, {
   FadeInDown,
   useSharedValue,
@@ -49,24 +51,25 @@ import { KitAccordion } from '../../components/ui/KitAccordion';
 
 const STAMP_CARDS_EXPANDED_KEY = 'ORBTAP_STAMP_CARDS_EXPANDED';
 
-const EARN_NEXT_LABELS: Record<string, string> = {
-  quest_reroll: 'Quest Reroll',
-  quest_booster: 'Quest Booster',
-  drop_reserve_fee: 'Drop Reserve',
-  early_access_unlock: 'Early Access',
-  streak_shield: 'Streak Shield',
-  multiplier_24h: '24h Multiplier',
-  receipt_cosmetics: 'Receipt Frames',
-  circle_bonus_pool: 'Circle Pool',
-  pulse_alerts_filters: 'Pulse Alerts',
+const EARN_NEXT_KEYS: Record<string, string> = {
+  quest_reroll: 'wallet.questReroll',
+  quest_booster: 'wallet.questBooster',
+  drop_reserve_fee: 'wallet.dropReserve',
+  early_access_unlock: 'wallet.earlyAccessUnlock',
+  streak_shield: 'wallet.streakShield',
+  multiplier_24h: 'wallet.multiplier24h',
+  receipt_cosmetics: 'wallet.receiptCosmetics',
+  circle_bonus_pool: 'wallet.circleBonusPool',
+  pulse_alerts_filters: 'wallet.pulseAlertsFilters',
 };
 
 export default function WalletScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { user } = useAuth();
   const { balance, history, verifiedActions, spend, loading: walletLoading } = useWallet();
   const rank = useXP();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, textStyles } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];
   const { isPremium, isPro, tier: effectiveTier } = useEffectiveTier();
   const { flags } = useFlags();
@@ -154,23 +157,34 @@ export default function WalletScreen() {
   };
 
   const hasVerifiedActions = (verifiedActions?.length ?? 0) > 0;
+
+  // Milestone progress bar animation
+  const MILESTONES = [500, 1000, 2500];
+  const milestoneMax = MILESTONES[MILESTONES.length - 1];
+  const milestoneProgress = useSharedValue(0);
+  useEffect(() => {
+    milestoneProgress.value = withTiming(Math.min(balance / milestoneMax, 1), { duration: 900 });
+  }, [balance, milestoneMax]);
+  const milestoneBarStyle = useAnimatedStyle(() => ({
+    width: `${milestoneProgress.value * 100}%` as `${number}%`,
+  }));
   const hasLiveDrops = drops.some((d) => d.qtyRemaining > 0 && Date.now() >= d.startAt && Date.now() <= d.endAt);
   const earnNextCta =
-    !hasVerifiedActions ? 'Get your first OrbProof' : hasLiveDrops ? 'Reserve a drop' : 'Start a quest';
+    !hasVerifiedActions ? t('wallet.getFirstOrbProof') : hasLiveDrops ? t('wallet.reserveDrop') : t('wallet.startQuest');
   const earnNextRoute =
     !hasVerifiedActions ? '/(tabs)/scan' : hasLiveDrops ? '/pulse' : '/missions';
 
   const handleSpend = (productKey: string) => {
     const rule = DEFAULT_ORBINOMICS_POLICY.burnRules.find((r) => r.productKey === productKey);
     if (!rule) return;
-    const name = EARN_NEXT_LABELS[productKey] ?? productKey;
+    const name = EARN_NEXT_KEYS[productKey] ? t(EARN_NEXT_KEYS[productKey]) : productKey;
     Alert.alert(
-      "Confirm Purchase",
-      `Spend ${rule.costPoints} OT on ${name}?`,
+      t('wallet.confirmPurchase'),
+      t('wallet.spendConfirm', { cost: String(rule.costPoints), name }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: "Confirm",
+          text: t('wallet.confirm'),
           onPress: async () => {
             setSpendingKey(productKey);
             const result = await spend({
@@ -182,10 +196,10 @@ export default function WalletScreen() {
               safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } else {
               showErrorAlert(
-                "Spend didn’t complete",
+                t('wallet.spendFailed'),
                 result.reason
-                  ? `${result.reason} Tap OK and try again when you’re ready.`
-                  : "We couldn’t complete this spend. Please try again or check your balance.",
+                  ? `${result.reason} ${t('wallet.spendFailedRetry')}`
+                  : t('wallet.spendFailedGeneric'),
               );
             }
           },
@@ -230,9 +244,9 @@ export default function WalletScreen() {
               <OrbTapLogoMark variant="small" />
             </View>
             <View style={styles.headerTextWrap}>
-              <Text style={[styles.headerTitle, { color: colors.text }]}>OT POINTS</Text>
-              <Text style={[styles.headerSub, { color: colors.textSecondary }]}>Earned from verified visits & redemptions</Text>
-              <Text style={[styles.headerTrust, { color: colors.textSecondary }]}>Daily caps keep it fair — spend on perks, drops & boosts</Text>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>{t('wallet.otPoints').toUpperCase()}</Text>
+              <Text style={[styles.headerSub, { color: colors.textSecondary }]}>{t('wallet.earnedFrom')}</Text>
+              <Text style={[styles.headerTrust, { color: colors.textSecondary }]}>{t('wallet.dailyCapsFair')}</Text>
             </View>
             <TouchableOpacity
               style={[styles.scanBtn, styles.headerIconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -255,7 +269,7 @@ export default function WalletScreen() {
         </Animated.View>
 
         {/* ── Dopamine stats strip: OT value + lifetime earned + 7-day sparkline ── */}
-        <WalletDopamineStrip balance={balance} history={safeHistory} verifiedActions={verifiedActions ?? []} colors={colors} themeGold={themeGold} loading={walletLoading} />
+        <WalletDopamineStrip balance={balance} history={safeHistory} verifiedActions={verifiedActions ?? []} colors={colors} themeGold={themeGold} loading={walletLoading} textStyles={textStyles} />
 
         {/* Points-to-perk ladder — Starbucks Stars style (frosted) */}
         <View style={[styles.pointsLadderCard, styles.pointsLadderGlass, { borderColor: colors.border }]}>
@@ -264,22 +278,41 @@ export default function WalletScreen() {
           )}
           {Platform.OS === 'web' && <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface }]} />}
           <View style={styles.pointsLadderContent}>
-          <Text style={[styles.pointsLadderTitle, { color: colors.text }]}>Points to Perk</Text>
+          <Text style={[styles.pointsLadderTitle, { color: colors.text }]}>{t('wallet.pointsToPerk')}</Text>
           <View style={styles.pointsLadderRow}>
             {[
-              { ot: 500, label: 'Silver' },
-              { ot: 1000, label: 'Gold' },
-              { ot: 2500, label: 'Platinum' },
+              { ot: 500, labelKey: 'wallet.silver' as const },
+              { ot: 1000, labelKey: 'wallet.gold' as const },
+              { ot: 2500, labelKey: 'wallet.platinum' as const },
             ].map((tier, i) => {
               const reached = balance >= tier.ot;
               return (
-                <View key={tier.label} style={[styles.pointsLadderItem, i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border }]}>
+                <View key={tier.labelKey} style={[styles.pointsLadderItem, i > 0 && { borderLeftWidth: 1, borderLeftColor: colors.border }]}>
                   <Text style={[styles.pointsLadderOT, { color: reached ? themeGold : colors.textSecondary }]}>{tier.ot} OT</Text>
-                  <Text style={[styles.pointsLadderLabel, { color: reached ? colors.text : colors.textSecondary }]}>{tier.label}</Text>
+                  <Text style={[styles.pointsLadderLabel, { color: reached ? colors.text : colors.textSecondary }]}>{t(tier.labelKey)}</Text>
+                  {reached && <Ionicons name="checkmark-circle" size={13} color={themeGold} style={{ marginTop: 3 }} />}
                 </View>
               );
             })}
           </View>
+          {/* Animated progress track */}
+          <View style={[styles.milestoneTrack, { backgroundColor: colors.border }]}>
+            <Animated.View style={[styles.milestoneFill, { backgroundColor: themeGold }, milestoneBarStyle]} />
+            {MILESTONES.map((m) => (
+              <View
+                key={m}
+                style={[
+                  styles.milestoneDot,
+                  { left: `${(m / milestoneMax) * 100}%` as any, backgroundColor: balance >= m ? themeGold : colors.border },
+                ]}
+              />
+            ))}
+          </View>
+          <Text style={[styles.milestoneHint, { color: colors.textSecondary }]}>
+            {balance >= milestoneMax
+              ? 'Platinum reached — elite explorer!'
+              : `${milestoneMax - Math.min(balance, milestoneMax)} OT to Platinum`}
+          </Text>
           </View>
         </View>
 
@@ -291,7 +324,7 @@ export default function WalletScreen() {
           >
             <View style={styles.activePowerUpsHeader}>
               <Ionicons name="flash" size={18} color={themeGold} />
-              <Text style={[styles.activePowerUpsTitle, { color: colors.text }]}>Active Power-Ups</Text>
+              <Text style={[styles.activePowerUpsTitle, { color: colors.text }]}>{t('wallet.activePowerUps')}</Text>
             </View>
             {activePowerUps.length > 0 ? (
               activePowerUps.map((p) => {
@@ -300,13 +333,13 @@ export default function WalletScreen() {
                 const m = minsLeft % 60;
                 return (
                   <View key={p.key} style={[styles.activePowerUpRow, { borderTopColor: colors.border }]}>
-                    <Text style={[styles.activePowerUpLabel, { color: colors.text }]}>{p.label}</Text>
-                    <Text style={[styles.activePowerUpTimer, { color: themeGold }]}>{h}h {m}m left</Text>
+                    <Text style={[styles.activePowerUpLabel, { color: colors.text }]}>{EARN_NEXT_KEYS[p.key] ? t(EARN_NEXT_KEYS[p.key]) : p.label}</Text>
+                    <Text style={[styles.activePowerUpTimer, { color: themeGold }]}>{h}h {m}m {t('wallet.left')}</Text>
                   </View>
                 );
               })
             ) : (
-              <Text style={[styles.activePowerUpEmpty, { color: colors.textSecondary }]}>No active power-ups — buy one in Upgrades</Text>
+              <Text style={[styles.activePowerUpEmpty, { color: colors.textSecondary }]}>{t('wallet.noActivePowerUps')}</Text>
             )}
           </TouchableOpacity>
 
@@ -319,8 +352,8 @@ export default function WalletScreen() {
           >
             <Ionicons name="qr-code" size={22} color={COLORS.neonBlue[0]} />
             <View style={styles.earnMoreStripText}>
-              <Text style={[styles.earnMoreStripTitle, { color: colors.text }]}>Earn more OT</Text>
-              <Text style={[styles.earnMoreStripSub, { color: colors.textSecondary }]}>Scan at a partner to add points</Text>
+              <Text style={[styles.earnMoreStripTitle, { color: colors.text }]}>{t('wallet.earnMoreOT')}</Text>
+              <Text style={[styles.earnMoreStripSub, { color: colors.textSecondary }]}>{t('wallet.scanAtPartner')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={COLORS.neonBlue[0]} />
           </TouchableOpacity>
@@ -334,12 +367,12 @@ export default function WalletScreen() {
         {/* ACTIONS — Send/Receive/Split are OT Points to Sphere members, not real money */}
         <Animated.View entering={FadeInDown.delay(500).duration(600)}>
           <View style={styles.actionsRow}>
-            <ActionButton icon="paper-plane" label="Send" onPress={() => handleAction('send')} colors={colors} isDark={isDark} />
-            <ActionButton icon="qr-code" label="Receive" onPress={() => handleAction('receive')} colors={colors} isDark={isDark} />
-            <ActionButton icon="git-branch-outline" label="Split" onPress={() => handleAction('split')} colors={colors} isDark={isDark} />
-            <ActionButton icon="gift" label="Redeem" onPress={() => handleAction('redeem')} colors={colors} isDark={isDark} />
+            <ActionButton icon="paper-plane" label={t('wallet.send')} onPress={() => handleAction('send')} colors={colors} isDark={isDark} />
+            <ActionButton icon="qr-code" label={t('wallet.receive')} onPress={() => handleAction('receive')} colors={colors} isDark={isDark} />
+            <ActionButton icon="git-branch-outline" label={t('wallet.split')} onPress={() => handleAction('split')} colors={colors} isDark={isDark} />
+            <ActionButton icon="gift" label={t('wallet.redeem')} onPress={() => handleAction('redeem')} colors={colors} isDark={isDark} />
           </View>
-          <Text style={[styles.actionsHint, { color: colors.textSecondary }]}>Send OT to Sphere members · Not real money</Text>
+          <Text style={[styles.actionsHint, { color: colors.textSecondary }]}>{t('wallet.sendHint')}</Text>
         </Animated.View>
 
         {/* ——— Reward Locker (Stamp Cards) ——— */}
@@ -352,7 +385,7 @@ export default function WalletScreen() {
         {/* ——— Accordion: STAMP CARDS ——— */}
         {stampCardsEnabled && stampCardsExpandedLoaded && (
           <KitAccordion
-            title="Stamp Cards"
+            title={t('wallet.stampCards')}
             expanded={!collapsed.stampCards}
             onToggle={() => toggleSection('stampCards')}
             style={styles.sectionCard}
@@ -365,12 +398,12 @@ export default function WalletScreen() {
                   style={[styles.stampCountBadge, { backgroundColor: colors.primary + '22', borderColor: colors.primary + '55' }]}
                 >
                   <Text style={[styles.stampCountBadgeText, { color: colors.primary }]}>
-                    {activeStampCards.length} active
+                    {activeStampCards.length} {t('wallet.active')}
                   </Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity onPress={() => router.push('/stamp-cards' as any)} hitSlop={8} activeOpacity={0.7}>
-                  <Text style={[styles.sectionLink, { color: colors.primary }]}>Scan to stamp</Text>
+                  <Text style={[styles.sectionLink, { color: colors.primary }]}>{t('wallet.scanToStamp')}</Text>
                 </TouchableOpacity>
               )
             }
@@ -407,16 +440,26 @@ export default function WalletScreen() {
           <SavedIntentModule uid={user?.uid ?? 'anon'} />
         )}
 
+        {/* ——— OrbBank™ Goal Jar tile ——— */}
+        {flags.isOrbBankEnabled && (
+          <View style={{ paddingHorizontal: 16, marginBottom: 4 }}>
+            <OrbBankTile
+              onTopUp={() => router.push('/orbbank/topup')}
+              onViewJars={() => router.push('/orbbank')}
+            />
+          </View>
+        )}
+
         {/* ——— Accordion: EARN MORE ——— */}
         {flags.isOrbWalletEnabled && (
           <KitAccordion
-            title="Earn more"
+            title={t('wallet.earnMore')}
             expanded={!collapsed.earnMore}
             onToggle={() => toggleSection('earnMore')}
             style={styles.sectionCard}
           >
             <TouchableOpacity style={[styles.earnRow, { borderBottomColor: colors.border }]} onPress={() => router.push(earnNextRoute as any)} activeOpacity={0.88}>
-              <Text style={[styles.earnRowLabel, { color: colors.textSecondary }]}>Earn next</Text>
+              <Text style={[styles.earnRowLabel, { color: colors.textSecondary }]}>{t('wallet.earnNext')}</Text>
               <View style={styles.earnRowCta}>
                 <Text style={[styles.earnRowCtaText, { color: colors.primary }]}>{earnNextCta}</Text>
                 <Ionicons name="chevron-forward" size={18} color={colors.primary} />
@@ -463,7 +506,7 @@ export default function WalletScreen() {
               {DEFAULT_ORBINOMICS_POLICY.burnRules.slice(0, 6).map((r) => (
                 <View key={r.productKey} style={[styles.powerUpRow, { borderBottomColor: colors.border }]}>
                   <View style={styles.powerUpInfo}>
-                    <Text style={[styles.powerUpName, { color: colors.text }]}>{EARN_NEXT_LABELS[r.productKey] ?? r.productKey}</Text>
+                    <Text style={[styles.powerUpName, { color: colors.text }]}>{EARN_NEXT_KEYS[r.productKey] ? t(EARN_NEXT_KEYS[r.productKey]) : r.productKey}</Text>
                     <Text style={[styles.powerUpCost, { color: colors.textSecondary }]}>{r.costPoints} OT</Text>
                   </View>
                   <TouchableOpacity
@@ -570,7 +613,7 @@ export default function WalletScreen() {
               </Animated.View>
             ))}
             {safeHistory.length === 0 && (
-              <KitEmptyState title="No transactions yet" subtitle="Scan at a partner to earn OT Points and see activity here." />
+              <KitEmptyState title="No transactions yet" subtitle="Scan your first partner QR to earn OT Points — your activity will appear here." />
             )}
           </View>
         </KitAccordion>
@@ -604,6 +647,7 @@ function WalletDopamineStrip({
   colors,
   themeGold,
   loading,
+  textStyles,
 }: {
   balance: number;
   history: any[];
@@ -611,6 +655,7 @@ function WalletDopamineStrip({
   colors: any;
   themeGold: string;
   loading?: boolean;
+  textStyles?: { caption: { fontSize: number; fontWeight: string; lineHeight: number; color?: string } };
 }) {
   // Build 7-day earn data from history — filter out invalid timestamps (createdAt = 0)
   const last7 = React.useMemo(() => {
@@ -633,22 +678,40 @@ function WalletDopamineStrip({
   const maxBar = Math.max(...last7, 1);
   const lifetimeEarned = verifiedActions.reduce((sum, a) => sum + (a.pointsAwarded ?? 0), 0);
 
+  // Shimmer pulse for skeleton loading state
+  const shimmerOpacity = useSharedValue(1);
+  React.useEffect(() => {
+    if (loading) {
+      shimmerOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.35, { duration: 550 }),
+          withTiming(1, { duration: 550 }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      shimmerOpacity.value = 1;
+    }
+  }, [loading]);
+  const shimmerStyle = useAnimatedStyle(() => ({ opacity: shimmerOpacity.value }));
+
   return (
     <Animated.View entering={FadeInDown.delay(420).duration(500)} style={[walletDopamineStyles.strip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       {/* Balance in OT (no $ to avoid currency confusion) */}
       <View style={walletDopamineStyles.row}>
         <View style={walletDopamineStyles.valueBlock}>
           {loading ? (
-            <View style={walletDopamineStyles.balanceSkeleton} />
+            <Animated.View style={[walletDopamineStyles.balanceSkeleton, shimmerStyle]} />
           ) : (
             <Text style={[walletDopamineStyles.dollarValue, { color: COLORS.success }]}>{balance.toLocaleString()} OT</Text>
           )}
-          <Text style={[walletDopamineStyles.dollarLabel, { color: colors.textSecondary }]}>available balance</Text>
+          <Text style={[textStyles?.caption ?? walletDopamineStyles.dollarLabel, { color: colors.textSecondary }]}>available balance</Text>
         </View>
         <View style={[walletDopamineStyles.divider, { backgroundColor: colors.border }]} />
         <View style={walletDopamineStyles.valueBlock}>
           {loading ? (
-            <View style={walletDopamineStyles.lifetimeSkeleton} />
+            <Animated.View style={[walletDopamineStyles.lifetimeSkeleton, shimmerStyle]} />
           ) : (
             <Text style={[walletDopamineStyles.lifetimeValue, { color: colors.text }]}>{lifetimeEarned.toLocaleString()}</Text>
           )}
@@ -658,7 +721,7 @@ function WalletDopamineStrip({
 
       {/* 7-day sparkline */}
       <View style={walletDopamineStyles.sparklineRow}>
-        <Text style={[walletDopamineStyles.sparkLabel, { color: colors.textSecondary }]}>7-day earn</Text>
+        <Text style={[textStyles?.caption ?? walletDopamineStyles.sparkLabel, { color: colors.textSecondary }]}>7-day earn</Text>
         <View style={walletDopamineStyles.sparkBars}>
           {last7.map((v, i) => (
             <View key={i} style={walletDopamineStyles.sparkBarWrap}>
@@ -778,6 +841,10 @@ const styles = StyleSheet.create({
   pointsLadderItem: { flex: 1, alignItems: 'center', paddingVertical: SPACE.xs },
   pointsLadderOT: { fontSize: 13, fontWeight: '800' },
   pointsLadderLabel: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+  milestoneTrack: { height: 6, borderRadius: 3, marginTop: 12, marginBottom: 4, overflow: 'visible', position: 'relative' },
+  milestoneFill: { height: 6, borderRadius: 3, position: 'absolute', top: 0, left: 0 },
+  milestoneDot: { position: 'absolute', top: -3, width: 12, height: 12, borderRadius: 6, marginLeft: -6 },
+  milestoneHint: { fontSize: 10, fontWeight: '600', textAlign: 'center', marginTop: 6 },
   activePowerUpsCard: {
     marginHorizontal: SPACE.base,
     marginBottom: SPACE.md,

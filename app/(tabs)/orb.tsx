@@ -34,6 +34,7 @@ import { GuidedTutorialOverlay } from '../../components/GuidedTutorialOverlay';
 import { useTutorial } from '../../context/TutorialContext';
 import { useDirectoryOpen } from '../../context/DirectoryOpenContext';
 import { COLORS } from '../../constants/Colors';
+import { HERO_STAGGER_MS } from '../../constants/DesignTokens';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../context/AuthContext';
 import { useFlags } from '../../components/FlagContext';
@@ -56,7 +57,6 @@ import { usePartners } from '../../context/PartnersContext';
 import { useMyPartner } from '../../hooks/useMyPartner';
 import { useEffectiveTier } from '../../hooks/useEffectiveTier';
 import { PARTNER_TIER_COLORS } from '../../constants/PartnerTiers';
-import { ORBSWIPE_HUB_SUBLINE } from '../../constants/ViralCopy';
 import { useCurrentUserProfile } from '../../hooks/useCurrentUserProfile';
 import { safeHaptics } from '../../utils/safeHaptics';
 import { isAdminEmail } from '../../constants/Admin';
@@ -73,74 +73,77 @@ import type { Partner } from '../../constants/MockData';
 import { useSocial } from '../../hooks/useSocial';
 import { usePulse } from '../../hooks/usePulse';
 import { useMissions, isMissionFullyComplete } from '../../context/MissionsContext';
+import { useI18n } from '../../context/I18nContext';
+import { logPremiumUpgradeCtaShown } from '../../services/analytics';
 
 const FIRST_GRID_ENTRY_STORAGE_KEY = 'ORBTAP_FIRST_GRID_ENTRY_SHOWN';
 
-// ─── Hub tile definition ───
-const HUB_CATEGORIES: Array<{
+// ─── Hub tile definition (labels filled via t() in component) ───
+const HUB_CATEGORIES_KEYS: Array<{
   id: string;
-  label: string;
+  labelKey: string;
   accent: string;
   emoji: string;
-  tiles: Array<{ id: string; label: string; subLabel: string; icon: string; color: string; route: string; flagKey?: FlagKey; minTier?: 'premium' | 'pro' }>;
+  tiles: Array<{ id: string; labelKey: string; subLabelKey: string; icon: string; color: string; route: string; flagKey?: FlagKey; minTier?: 'premium' | 'pro' }>;
 }> = [
   {
     id: 'earn',
-    label: 'Earn',
+    labelKey: 'orb.earn',
     accent: '#22C55E',
     emoji: '⚡',
     tiles: [
-      { id: 'pulse', label: 'OrbPulse', subLabel: 'Live drops', icon: 'pulse', color: '#4ADE80', route: '/pulse', flagKey: 'isOrbPulseEnabled' },
-      { id: 'missions', label: 'Missions', subLabel: 'Daily OT', icon: 'flag', color: '#FBBF24', route: '/missions', flagKey: 'isOrbQuestEnabled' },
-      { id: 'vote', label: 'OrbVote', subLabel: 'Polls', icon: 'stats-chart', color: '#60A5FA', route: '/vote', flagKey: 'isOrbVoteEnabled' },
-      { id: 'bounty', label: 'OrbBounty', subLabel: 'Deal Bounty', icon: 'gift', color: '#F59E0B', route: '/bounty', flagKey: 'isOrbBountyEnabled' },
+      { id: 'pulse', labelKey: 'orb.orbPulse', subLabelKey: 'orb.liveDrops', icon: 'pulse', color: '#4ADE80', route: '/pulse', flagKey: 'isOrbPulseEnabled' },
+      { id: 'missions', labelKey: 'orb.missions', subLabelKey: 'orb.dailyOT', icon: 'flag', color: '#FBBF24', route: '/missions', flagKey: 'isOrbQuestEnabled' },
+      { id: 'vote', labelKey: 'orb.orbVote', subLabelKey: 'orb.polls', icon: 'stats-chart', color: '#60A5FA', route: '/vote', flagKey: 'isOrbVoteEnabled' },
+      { id: 'bounty', labelKey: 'orb.orbBounty', subLabelKey: 'orb.dealBounty', icon: 'gift', color: '#F59E0B', route: '/bounty', flagKey: 'isOrbBountyEnabled' },
+      { id: 'orbpilot', labelKey: 'orb.orbPilot', subLabelKey: 'orb.verifiedVisits', icon: 'shield-checkmark', color: '#7C3AED', route: '/orbpilot', flagKey: 'isOrbPilotUserEnabled' },
     ],
   },
   {
     id: 'discover',
-    label: 'Discover',
+    labelKey: 'orb.discover',
     accent: '#0EA5E9',
     emoji: '🗺️',
     tiles: [
-      { id: 'map', label: 'Map', subLabel: 'Nearby', icon: 'map', color: '#22C55E', route: '/(tabs)' },
-      { id: 'orbswipe', label: 'OrbSwipe Tonight', subLabel: ORBSWIPE_HUB_SUBLINE, icon: 'swap-horizontal', color: '#A78BFA', route: '/orbswipe', flagKey: 'isOrbSwipeEnabled' },
-      { id: 'partners', label: 'Partners', subLabel: 'Browse & perks', icon: 'business', color: '#0EA5E9', route: '/partners' },
-      { id: 'bookmarks', label: 'Bookmarks', subLabel: 'Saved', icon: 'bookmark', color: '#F59E0B', route: '/bookmarks', flagKey: 'isBookmarksEnabled' },
-      { id: 'feed', label: 'Feed', subLabel: 'Commerce', icon: 'newspaper', color: '#4ADE80', route: '/feed', flagKey: 'isOrbFeedEnabled' },
+      { id: 'map', labelKey: 'orb.map', subLabelKey: 'orb.nearby', icon: 'map', color: '#22C55E', route: '/(tabs)' },
+      { id: 'orbswipe', labelKey: 'orb.orbSwipeTonight', subLabelKey: 'orb.orbSwipeSub', icon: 'swap-horizontal', color: '#A78BFA', route: '/orbswipe', flagKey: 'isOrbSwipeEnabled' },
+      { id: 'partners', labelKey: 'orb.partners', subLabelKey: 'orb.browsePerks', icon: 'business', color: '#0EA5E9', route: '/partners' },
+      { id: 'bookmarks', labelKey: 'orb.bookmarks', subLabelKey: 'orb.saved', icon: 'bookmark', color: '#F59E0B', route: '/bookmarks', flagKey: 'isBookmarksEnabled' },
+      { id: 'feed', labelKey: 'orb.feed', subLabelKey: 'orb.commerce', icon: 'newspaper', color: '#4ADE80', route: '/feed', flagKey: 'isOrbFeedEnabled' },
     ],
   },
   {
     id: 'compete',
-    label: 'Compete',
+    labelKey: 'orb.compete',
     accent: '#A78BFA',
     emoji: '🏆',
     tiles: [
-      { id: 'leaderboard', label: 'Leaderboard', subLabel: 'Ranks', icon: 'trophy', color: '#A78BFA', route: '/leaderboard', flagKey: 'isLeaderboardEnabled' },
-      { id: 'orbsignal', label: 'Orb Signal', subLabel: 'Predict', icon: 'radio', color: '#EF4444', route: '/orbsignal', flagKey: 'isOrbSignalEnabled', minTier: 'premium' },
+      { id: 'leaderboard', labelKey: 'orb.leaderboard', subLabelKey: 'orb.ranks', icon: 'trophy', color: '#A78BFA', route: '/leaderboard', flagKey: 'isLeaderboardEnabled' },
+      { id: 'orbsignal', labelKey: 'orb.orbSignal', subLabelKey: 'orb.predict', icon: 'radio', color: '#EF4444', route: '/orbsignal', flagKey: 'isOrbSignalEnabled', minTier: 'premium' },
     ],
   },
   {
     id: 'grow',
-    label: 'Grow',
+    labelKey: 'orb.grow',
     accent: '#FBBF24',
     emoji: '📈',
     tiles: [
-      { id: 'stats', label: 'Stats', subLabel: 'Your impact', icon: 'stats-chart', color: '#22C55E', route: '/stats', flagKey: 'isStatsEnabled' },
-      { id: 'knowledge', label: 'Knowledge', subLabel: 'Learn', icon: 'bulb', color: '#FBBF24', route: '/knowledge', flagKey: 'isKnowledgeEnabled' },
-      { id: 'premium', label: 'Premium', subLabel: 'Unlock more', icon: 'diamond', color: '#8B5CF6', route: '/premium' },
-      { id: 'spheres', label: 'Spheres', subLabel: 'Groups', icon: 'people', color: '#8B5CF6', route: '/spheres' },
+      { id: 'stats', labelKey: 'orb.stats', subLabelKey: 'orb.yourImpact', icon: 'stats-chart', color: '#22C55E', route: '/stats', flagKey: 'isStatsEnabled' },
+      { id: 'knowledge', labelKey: 'orb.knowledge', subLabelKey: 'orb.learn', icon: 'bulb', color: '#FBBF24', route: '/knowledge', flagKey: 'isKnowledgeEnabled' },
+      { id: 'premium', labelKey: 'orb.premium', subLabelKey: 'orb.unlockMore', icon: 'diamond', color: '#8B5CF6', route: '/premium' },
+      { id: 'spheres', labelKey: 'orb.spheres', subLabelKey: 'orb.groups', icon: 'people', color: '#8B5CF6', route: '/spheres' },
     ],
   },
   {
     id: 'go',
-    label: 'Go',
+    labelKey: 'orb.go',
     accent: '#60A5FA',
     emoji: '🚀',
     tiles: [
-      { id: 'scan', label: 'Scan', subLabel: 'Redeem', icon: 'qr-code', color: '#4ADE80', route: '/(tabs)/scan' },
-      { id: 'wallet', label: 'Vault', subLabel: 'Balance', icon: 'wallet', color: '#EF4444', route: '/(tabs)/wallet', flagKey: 'isOrbWalletEnabled' },
-      { id: 'settings', label: 'Settings', subLabel: 'Preferences', icon: 'settings-sharp', color: '#9CA3AF', route: '/settings' },
-      { id: 'admin', label: 'Admin', subLabel: 'Hub', icon: 'construct', color: '#FBBF24', route: '/admin' },
+      { id: 'scan', labelKey: 'orb.scan', subLabelKey: 'orb.redeem', icon: 'qr-code', color: '#4ADE80', route: '/(tabs)/scan' },
+      { id: 'wallet', labelKey: 'orb.vault', subLabelKey: 'orb.balance', icon: 'wallet', color: '#EF4444', route: '/(tabs)/wallet', flagKey: 'isOrbWalletEnabled' },
+      { id: 'settings', labelKey: 'orb.settings', subLabelKey: 'orb.preferences', icon: 'settings-sharp', color: '#9CA3AF', route: '/settings' },
+      { id: 'admin', labelKey: 'orb.admin', subLabelKey: 'orb.hub', icon: 'construct', color: '#FBBF24', route: '/admin' },
     ],
   },
 ];
@@ -185,13 +188,128 @@ const liveStyles = StyleSheet.create({
   pillSub: { fontSize: 10, fontWeight: '600', maxWidth: 120 },
 });
 
+const FEATURE_SPOTLIGHTS = [
+  {
+    id: 'orbpilot',
+    emoji: '🛸',
+    title: 'OrbPilot™',
+    sub: 'Verified-visit autopilot for businesses. Partners pay only when you show up — you earn guaranteed OT Points.',
+    cta: 'How it works',
+    route: '/orbpilot',
+    accent: '#7C3AED',
+  },
+  {
+    id: 'orbsignal',
+    emoji: '📡',
+    title: 'OrbSignal',
+    sub: 'Predict which spots will be busiest tonight. Earn OT Points when your forecast is right.',
+    cta: 'Make a prediction',
+    route: '/orbsignal',
+    accent: '#EF4444',
+  },
+  {
+    id: 'spheres',
+    emoji: '⚡',
+    title: 'Spheres',
+    sub: 'Compete with your squad. Pool OT Points, unlock group rewards, and top the city leaderboard together.',
+    cta: 'Join a sphere',
+    route: '/spheres',
+    accent: '#8B5CF6',
+  },
+  {
+    id: 'stampcards',
+    emoji: '☕',
+    title: 'Stamp Cards',
+    sub: 'Digital loyalty cards at your favourite spots. Earn stamps every visit, unlock free items automatically.',
+    cta: 'See your cards',
+    route: '/wallet',
+    accent: '#F59E0B',
+  },
+];
+
+function FeatureSpotlightCard({ onNav, colors }: { onNav: (route: string) => void; colors: any }) {
+  const [idx, setIdx] = useState(0);
+  const opacity = useSharedValue(1);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      opacity.value = withTiming(0, { duration: 300 }, () => {
+        // Switch item after fade out
+      });
+      setTimeout(() => {
+        setIdx((prev) => (prev + 1) % FEATURE_SPOTLIGHTS.length);
+        opacity.value = withTiming(1, { duration: 300 });
+      }, 320);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const spot = FEATURE_SPOTLIGHTS[idx]!;
+
+  return (
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPress={() => onNav(spot.route)}
+        style={({ pressed }) => [
+          featureSpotStyles.card,
+          { borderColor: spot.accent + '55', backgroundColor: spot.accent + '10' },
+          pressed && { opacity: 0.9 },
+        ]}
+      >
+        <View style={featureSpotStyles.row}>
+          <Text style={featureSpotStyles.emoji}>{spot.emoji}</Text>
+          <View style={featureSpotStyles.textBlock}>
+            <Text style={[featureSpotStyles.title, { color: colors.text }]}>{spot.title}</Text>
+            <Text style={[featureSpotStyles.sub, { color: colors.textSecondary }]} numberOfLines={2}>{spot.sub}</Text>
+          </View>
+          <View style={[featureSpotStyles.ctaBtn, { backgroundColor: spot.accent }]}>
+            <Text style={featureSpotStyles.ctaText}>{spot.cta}</Text>
+          </View>
+        </View>
+        <View style={featureSpotStyles.dotsRow}>
+          {FEATURE_SPOTLIGHTS.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                featureSpotStyles.dot,
+                { backgroundColor: i === idx ? spot.accent : colors.border },
+              ]}
+            />
+          ))}
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const featureSpotStyles = StyleSheet.create({
+  card: { borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  emoji: { fontSize: 28, width: 36, textAlign: 'center' },
+  textBlock: { flex: 1, gap: 2 },
+  title: { fontSize: 14, fontWeight: '800' },
+  sub: { fontSize: 12, lineHeight: 17 },
+  ctaBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  ctaText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  dotsRow: { flexDirection: 'row', gap: 5, marginTop: 10, justifyContent: 'center' },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+});
+
 /** Upgrade CTA card for free users */
 function UpgradeCTACard({ themeGold, onPress, colors }: { themeGold: string; onPress: () => void; colors: any }) {
+  const { t } = useI18n();
   const shimmerX = useSharedValue(-300);
   useEffect(() => {
     shimmerX.value = withRepeat(withTiming(400, { duration: 2500 }), -1, false);
   }, []);
   const shimmerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shimmerX.value }] }));
+
+  const bullets = [
+    { icon: 'flash' as const, textKey: 'orb.earlyDropAccess' },
+    { icon: 'trending-up' as const, textKey: 'orb.multiplierScan' },
+    { icon: 'ticket' as const, textKey: 'orb.orbPassPerks' },
+  ];
 
   return (
     <Pressable
@@ -225,24 +343,20 @@ function UpgradeCTACard({ themeGold, onPress, colors }: { themeGold: string; onP
             <Ionicons name="diamond" size={20} color={themeGold} />
           </View>
           <View style={upgradeStyles.textBlock}>
-            <Text style={[upgradeStyles.title, { color: '#fff' }]}>Unlock OrbTap Premium</Text>
-            <Text style={[upgradeStyles.sub, { color: 'rgba(255,255,255,0.6)' }]}>Everything you need to dominate the leaderboard</Text>
+            <Text style={[upgradeStyles.title, { color: '#fff' }]}>{t('orb.unlockPremium')}</Text>
+            <Text style={[upgradeStyles.sub, { color: 'rgba(255,255,255,0.6)' }]}>{t('orb.unlockPremiumSub')}</Text>
           </View>
         </View>
         <View style={upgradeStyles.bullets}>
-          {[
-            { icon: 'flash', text: 'Early drop access · First in line' },
-            { icon: 'trending-up', text: '1.2× OT multiplier on every scan' },
-            { icon: 'ticket', text: 'OrbPass monthly perks at partners' },
-          ].map((b) => (
-            <View key={b.text} style={upgradeStyles.bulletRow}>
-              <Ionicons name={b.icon as any} size={13} color={themeGold} />
-              <Text style={upgradeStyles.bulletText}>{b.text}</Text>
+          {bullets.map((b) => (
+            <View key={b.textKey} style={upgradeStyles.bulletRow}>
+              <Ionicons name={b.icon} size={13} color={themeGold} />
+              <Text style={upgradeStyles.bulletText}>{t(b.textKey)}</Text>
             </View>
           ))}
         </View>
         <View style={[upgradeStyles.ctaBtn, { backgroundColor: themeGold }]}>
-          <Text style={upgradeStyles.ctaBtnText}>Upgrade now →</Text>
+          <Text style={upgradeStyles.ctaBtnText}>{t('orb.upgradeNow')}</Text>
         </View>
       </View>
     </Pressable>
@@ -274,6 +388,7 @@ const upgradeStyles = StyleSheet.create({
 });
 
 export default function OrbHubScreen() {
+  const { t } = useI18n();
   const [dirVisible, setDirVisible] = useState(false);
   const [allPagesVisible, setAllPagesVisible] = useState(false);
   const [gridModalPartner, setGridModalPartner] = useState<Partner | null>(null);
@@ -289,7 +404,21 @@ export default function OrbHubScreen() {
 
   const router = useRouter();
   const directoryOpen = useDirectoryOpen();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, textStyles } = useTheme();
+
+  const hubCategories = React.useMemo(
+    () =>
+      HUB_CATEGORIES_KEYS.map((cat) => ({
+        ...cat,
+        label: t(cat.labelKey),
+        tiles: cat.tiles.map((tile) => ({
+          ...tile,
+          label: t(tile.labelKey),
+          subLabel: t(tile.subLabelKey),
+        })),
+      })),
+    [t],
+  );
   const themeGold = colors.gold ?? COLORS.gold[0];
   const { recentPartners } = useMapHistory();
   const { userLocation } = useUserLocation();
@@ -498,7 +627,7 @@ export default function OrbHubScreen() {
 
           {/* ⑤ Live Activity Strip — social proof from usePulse */}
           {flags.isOrbPulseEnabled && liveTiles.length > 0 && (
-            <Animated.View entering={FadeInDown.duration(350)} style={styles.liveBlock}>
+            <Animated.View entering={FadeInDown.delay(HERO_STAGGER_MS).duration(350)} style={styles.liveBlock}>
               <View style={styles.sectionHead}>
                 <View style={[styles.liveDot, { backgroundColor: '#4ADE80' }]} />
                 <Text style={[styles.sectionLabel, { color: '#4ADE80' }]}>LIVE NOW</Text>
@@ -627,7 +756,7 @@ export default function OrbHubScreen() {
             <View style={styles.hubCardInner}>
               <View style={styles.hubTitleRow}>
                 <View style={styles.hubTitleBlock}>
-                  <Text style={[styles.hubTitle, { color: colors.text }]}>{layout.getDisplayName('screen_orb_hub_title', 'Your Hub')}</Text>
+                  <Text style={[textStyles.title, { marginBottom: 2, letterSpacing: -0.2 }]}>{layout.getDisplayName('screen_orb_hub_title', 'Your Hub')}</Text>
                   <Text style={[styles.hubSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>Tap any tile · see all pages →</Text>
                 </View>
                 <TouchableOpacity
@@ -636,12 +765,12 @@ export default function OrbHubScreen() {
                   activeOpacity={0.85}
                 >
                   <Ionicons name="grid" size={18} color={colors.text} />
-                  <Text style={[styles.hubAllPagesLabel, { color: colors.text }]}>All pages</Text>
+                  <Text style={[styles.hubAllPagesLabel, { color: colors.text }]}>{t('orb.allPages')}</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Categories as frosted-glass cards */}
-              {HUB_CATEGORIES.map((cat) => {
+              {hubCategories.map((cat) => {
                 const visibleTiles = cat.tiles.filter((t) => {
                   if (t.id === 'admin') return isAdminEmail(user?.email);
                   return showTile(t.id, t.flagKey);
@@ -696,11 +825,14 @@ export default function OrbHubScreen() {
 
           {/* ⑪ OrbScope card already rendered above if enabled */}
 
-          {/* ⑫ Upgrade CTA — for free users only */}
+          {/* ⑫a Feature Spotlight — rotating hidden-weapons card */}
+          <FeatureSpotlightCard onNav={handleNav} colors={colors} />
+
+          {/* ⑫b Upgrade CTA — for free users only */}
           {effectiveTier === 'free' && !isPartner && (
             <UpgradeCTACard
               themeGold={themeGold}
-              onPress={() => handleNav('/premium')}
+              onPress={() => { logPremiumUpgradeCtaShown({ source: 'orb_hub' }); handleNav('/premium'); }}
               colors={colors}
             />
           )}

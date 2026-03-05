@@ -26,10 +26,12 @@ import { PARTNER_TIER_COLORS, PARTNER_TIER_LABELS } from '../../constants/Partne
 import type { PartnerTier } from '../../constants/PartnerTiers';
 import { alert as alertDialog, showErrorAlert } from '../../utils/alert';
 import { safeHaptics } from '../../utils/safeHaptics';
+import { useI18n } from '../../context/I18nContext';
 
 const PARTNER_TIERS: PartnerTier[] = ['silver', 'gold', 'platinum'];
 
 export default function PartnerPerkFormScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const isEdit = Boolean(id);
@@ -156,10 +158,11 @@ export default function PartnerPerkFormScreen() {
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             value={cost}
-            onChangeText={setCost}
+            onChangeText={(t) => setCost(t.replace(/\D/g, '').slice(0, 6))}
             placeholder="150"
             placeholderTextColor={colors.textSecondary}
             keyboardType="number-pad"
+            maxLength={6}
           />
           <Text style={[styles.label, { color: colors.textSecondary }]}>Tier</Text>
           <View style={styles.pillRow}>

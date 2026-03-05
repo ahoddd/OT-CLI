@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,8 +24,10 @@ import { SearchOverlay } from '../components/SearchOverlay';
 import { GuidedTutorialOverlay } from '../components/GuidedTutorialOverlay';
 import { useTutorial } from '../context/TutorialContext';
 import { alert as alertDialog, showErrorAlert } from '../utils/alert';
+import { useI18n } from '../context/I18nContext';
 
 export default function PeopleScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];
@@ -212,7 +215,7 @@ export default function PeopleScreen() {
             </View>
           ) : (
             <>
-              <View style={styles.section}>
+              <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>REQUESTS</Text>
                 {requestsReceived.length === 0 ? (
                   <Text style={[styles.empty, { color: colors.textSecondary }]}>No pending requests</Text>
@@ -235,9 +238,9 @@ export default function PeopleScreen() {
                     </View>
                   ))
                 )}
-              </View>
+              </Animated.View>
 
-              <View style={styles.section}>
+              <Animated.View entering={FadeInDown.delay(60).duration(400).springify()} style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>FRIENDS ({friends.length})</Text>
                 {friends.length === 0 ? (
                   <View style={[styles.emptyFriends, { backgroundColor: COLORS.neonBlue[0] + '0C', borderColor: COLORS.neonBlue[0] + '30' }]}>
@@ -272,7 +275,7 @@ export default function PeopleScreen() {
                     );
                   })
                 )}
-              </View>
+              </Animated.View>
 
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ADD FRIEND</Text>

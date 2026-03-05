@@ -27,11 +27,20 @@ interface FlagContextType {
 
 const FlagContext = createContext<FlagContextType | undefined>(undefined);
 
+const VALID_MAP_PROVIDERS: MapProvider[] = ['mapbox', 'native', 'none'];
+
+function normalizeMapProvider(value: unknown): MapProvider {
+  if (typeof value === 'string' && VALID_MAP_PROVIDERS.includes(value as MapProvider)) {
+    return value as MapProvider;
+  }
+  return DEFAULT_FLAGS.mapProvider;
+}
+
 function mergeWithDefaults(parsed: Partial<FeatureFlags>): FeatureFlags {
   return {
     ...DEFAULT_FLAGS,
     ...parsed,
-    mapProvider: (parsed?.mapProvider ?? DEFAULT_FLAGS.mapProvider) as MapProvider,
+    mapProvider: normalizeMapProvider(parsed?.mapProvider),
   };
 }
 
@@ -55,7 +64,7 @@ export const FlagProvider = ({ children }: { children: React.ReactNode }) => {
           setAuditLog(Array.isArray(list) ? list.slice(-AUDIT_MAX) : []);
         }
       } catch (e) {
-        console.warn('FlagContext load error:', e);
+        if (__DEV__) console.warn('FlagContext load error:', e);
       }
     })();
   }, []);
@@ -65,14 +74,15 @@ export const FlagProvider = ({ children }: { children: React.ReactNode }) => {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newFlags));
       await AsyncStorage.setItem(AUDIT_KEY, JSON.stringify(newAudit.slice(-AUDIT_MAX)));
     } catch (e) {
-      console.warn('FlagContext persist error:', e);
+      if (__DEV__) console.warn('FlagContext persist error:', e);
     }
   }, []);
 
   const setFlag = useCallback(
     (key: FlagKey, value: FlagValue) => {
       setFlagsState((prev) => {
-        const next = { ...prev, [key]: value };
+        const normalizedValue = key === 'mapProvider' ? normalizeMapProvider(value) : value;
+        const next = { ...prev, [key]: normalizedValue };
         const entry: AuditEntry = { key, value, timestamp: Date.now() };
         setAuditLog((log) => {
           const nextLog = [...log, entry].slice(-AUDIT_MAX);
@@ -88,7 +98,7 @@ export const FlagProvider = ({ children }: { children: React.ReactNode }) => {
   const resetFlags = useCallback(() => {
     setFlagsState({ ...DEFAULT_FLAGS });
     setAuditLog([]);
-    persist({ ...DEFAULT_FLAGS }, []).catch((e) => console.warn('FlagContext reset persist:', e));
+    persist({ ...DEFAULT_FLAGS }, []).catch((e) => { if (__DEV__) console.warn('FlagContext reset persist:', e); });
   }, [persist]);
 
   return (

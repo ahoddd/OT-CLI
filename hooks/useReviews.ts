@@ -12,6 +12,11 @@ export interface Review {
   text: string;
   date: string;
   verified: boolean; // Only true if linked to a Proof
+  /** Proof/VerifiedAction id for stamp-gated verified reviews. */
+  proofId?: string;
+  /** Partner reply (owner only). */
+  partnerReply?: string;
+  partnerReplyAt?: string;
 }
 
 // Mock initial reviews to populate the UI
@@ -30,17 +35,19 @@ export const useReviews = () => {
   const loadReviews = async () => {
     try {
       const data = await AsyncStorage.getItem(REVIEWS_KEY);
+      const byId = new Map<string, Review>();
+      MOCK_REVIEWS.forEach((r) => byId.set(r.id, r));
       if (data) {
-        setReviews([...MOCK_REVIEWS, ...JSON.parse(data)]);
-      } else {
-        setReviews(MOCK_REVIEWS);
+        const stored: Review[] = JSON.parse(data);
+        stored.forEach((r) => byId.set(r.id, r));
       }
+      setReviews(Array.from(byId.values()));
     } catch (e) {
-      console.error(e);
+      if (__DEV__) console.error(e);
     }
   };
 
-  const addReview = async (partnerId: string, rating: number, text: string) => {
+  const addReview = async (partnerId: string, rating: number, text: string, proofId?: string) => {
     const newReview: Review = {
       id: Date.now().toString(),
       partnerId,
@@ -49,16 +56,29 @@ export const useReviews = () => {
       rating,
       text,
       date: new Date().toISOString().split('T')[0],
-      verified: true
+      verified: true,
+      proofId,
     };
     
     const updated = [newReview, ...reviews];
     setReviews(updated);
     // Persist only new ones in real app, but here we store diff
     await AsyncStorage.setItem(REVIEWS_KEY, JSON.stringify(updated.filter(r => !MOCK_REVIEWS.includes(r))));
+    const { recordPartnerReview } = await import('../services/partnerAnalytics');
+    recordPartnerReview(partnerId).catch(() => {});
   };
 
   const getPartnerReviews = (partnerId: string) => reviews.filter(r => r.partnerId === partnerId);
+
+  const addPartnerReply = async (reviewId: string, partnerId: string, replyText: string) => {
+    const updated = reviews.map((r) =>
+      r.id === reviewId && r.partnerId === partnerId
+        ? { ...r, partnerReply: replyText.trim(), partnerReplyAt: new Date().toISOString().split('T')[0] }
+        : r
+    );
+    setReviews(updated);
+    await AsyncStorage.setItem(REVIEWS_KEY, JSON.stringify(updated));
+  };
 
   /**
    * Orb Score™ — Only on OrbTap. Copyrightable unique metric:
@@ -76,7 +96,7 @@ export const useReviews = () => {
     const totalWeight = partnerReviews.reduce((acc, r) => acc + (r.verified ? 1.5 : 1), 0);
     const avg = totalWeight > 0 ? weightedSum / totalWeight : 0;
     const score = Math.round((avg / 5) * 100);
-    const label = score >= 90 ? 'Elite' : score >= 75 ? 'Great' : score >= 60 ? 'Good' : 'Rising';
+    const label = score >= 90 ? 'Legendary' : score >= 75 ? 'Great' : score >= 60 ? 'Good' : 'Rising';
     return {
       score: Math.min(100, Math.max(0, score)),
       verifiedCount: verified.length,
@@ -85,5 +105,5 @@ export const useReviews = () => {
     };
   };
 
-  return { reviews, addReview, getPartnerReviews, getOrbScore };
+  return { reviews, addReview, addPartnerReply, getPartnerReviews, getOrbScore };
 };

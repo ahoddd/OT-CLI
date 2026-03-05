@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import Svg, { Polyline } from 'react-native-svg';
 import {
   View,
   Text,
@@ -29,8 +30,6 @@ import {
   OrbSignalMarket,
   MOCK_ORB_SIGNAL_MARKETS,
   VOTE_COST,
-  getFeaturedMarkets,
-  getEndingSoonMarkets,
 } from '../../constants/OrbSignal';
 import { PARTNER_TIER_COLORS } from '../../constants/PartnerTiers';
 import { COLORS } from '../../constants/Colors';
@@ -43,6 +42,8 @@ import { safeHaptics, Haptics } from '../../utils/safeHaptics';
 import { ShareToSocialSheet } from '../../components/ShareToSocialSheet';
 import { ORBTAP_APP_LINK } from '../../constants/AppLinks';
 import { useEffectiveTier } from '../../hooks/useEffectiveTier';
+import { useI18n } from '../../context/I18nContext';
+import { useDemoDataEnabled } from '../../hooks/useDemoDataEnabled';
 
 const SIGNAL_DAILY_LIMIT: Record<'free' | 'premium' | 'pro', number> = {
   free: 2,
@@ -84,6 +85,28 @@ function HowItWorksStrip() {
         </View>
       </BlurView>
     </Animated.View>
+  );
+}
+
+/** Mini 5-point sparkline using market ID as seed for deterministic "momentum" */
+function MiniSparkline({ marketId, probability, color }: { marketId: string; probability: number; color: string }) {
+  const W = 60; const H = 24;
+  // Generate 5 deterministic data points from market ID hash
+  const points = useMemo(() => {
+    let seed = marketId.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+    const rng = () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; };
+    const base = probability / 100;
+    const data = [rng() * 0.4 + 0.3, rng() * 0.3 + base * 0.7, rng() * 0.2 + base * 0.8, rng() * 0.15 + base * 0.85, base];
+    return data.map((v, i) => {
+      const x = (i / (data.length - 1)) * W;
+      const y = H - v * H;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+  }, [marketId, probability]);
+  return (
+    <Svg width={W} height={H}>
+      <Polyline points={points} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+    </Svg>
   );
 }
 
@@ -221,7 +244,16 @@ function SignalCard({
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.cardQuestion, { color: colors.text }]}>{market.question}</Text>
+            <View style={styles.questionRow}>
+              <Text style={[styles.cardQuestion, { color: colors.text }]}>{market.question}</Text>
+              <MiniSparkline marketId={market.id} probability={probability} color={accentColor} />
+            </View>
+
+            {/* Confidence meter label */}
+            <View style={styles.confidenceLabels}>
+              <Text style={[styles.confidenceLabelYes, { color: '#14B8A6' }]}>{probability}% YES</Text>
+              <Text style={[styles.confidenceLabelNo, { color: '#F43F5E' }]}>{100 - probability}% NO</Text>
+            </View>
 
             <View style={styles.sentimentBarWrap}>
               <View style={styles.sentimentBarBg}>
@@ -355,6 +387,7 @@ function ConfirmedOverlay({
 
 // --- Screen ---
 export default function OrbSignalScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];
@@ -362,23 +395,35 @@ export default function OrbSignalScreen() {
   const { placeForecast, getMyVoteForMarket, myForecasts } = useSignal();
   const { flags } = useFlags();
   const { tier } = useEffectiveTier();
-  const [markets, setMarkets] = useState<OrbSignalMarket[]>(() =>
-    MOCK_ORB_SIGNAL_MARKETS.map((m) => ({ ...m, percentages: [...m.percentages] }))
-  );
+  const { demoDataEnabled } = useDemoDataEnabled();
+  const [markets, setMarkets] = useState<OrbSignalMarket[]>([]);
   const [marketsError, setMarketsError] = useState(false);
   const [marketsLoading, setMarketsLoading] = useState(false);
 
   const fetchMarkets = React.useCallback(() => {
-    if (!flags.isFirestoreLiveEnabled) return;
+    if (!flags.isFirestoreLiveEnabled) {
+      if (demoDataEnabled) {
+        setMarkets(MOCK_ORB_SIGNAL_MARKETS.map((m) => ({ ...m, percentages: [...m.percentages] })));
+      } else {
+        setMarkets([]);
+      }
+      return;
+    }
     setMarketsError(false);
     setMarketsLoading(true);
     fetchOrbSignalMarketsFromFirestore(50)
       .then((list) => {
-        if (list.length > 0) setMarkets(list.map((m) => ({ ...m, percentages: [...m.percentages] })));
+        if (list.length > 0) {
+          setMarkets(list.map((m) => ({ ...m, percentages: [...m.percentages] })));
+        } else if (demoDataEnabled) {
+          setMarkets(MOCK_ORB_SIGNAL_MARKETS.map((m) => ({ ...m, percentages: [...m.percentages] })));
+        } else {
+          setMarkets([]);
+        }
       })
       .catch(() => setMarketsError(true))
       .finally(() => setMarketsLoading(false));
-  }, [flags.isFirestoreLiveEnabled]);
+  }, [flags.isFirestoreLiveEnabled, demoDataEnabled]);
 
   React.useEffect(() => {
     fetchMarkets();
@@ -398,8 +443,8 @@ export default function OrbSignalScreen() {
   const remaining = dailyLimit === Infinity ? Infinity : Math.max(0, dailyLimit - todayForecastCount);
   const isRateLimited = remaining === 0;
 
-  const featured = getFeaturedMarkets();
-  const endingSoon = getEndingSoonMarkets();
+  const featured = React.useMemo(() => markets.filter((m) => m.featured), [markets]);
+  const endingSoon = React.useMemo(() => markets.filter((m) => m.endingSoon), [markets]);
   const filteredMarkets = segment === 'featured' ? featured : segment === 'endingSoon' ? endingSoon : [...markets];
 
   const handleToggleExpand = useCallback((id: string) => {
@@ -651,7 +696,11 @@ const styles = StyleSheet.create({
   liveText: { fontSize: 10, fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
   viewersText: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
   shareBtn: { marginLeft: 'auto', padding: 6 },
-  cardQuestion: { fontSize: 17, fontWeight: '800', color: '#FFF', lineHeight: 22, marginBottom: 14 },
+  questionRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10, gap: 8 },
+  cardQuestion: { fontSize: 17, fontWeight: '800', color: '#FFF', lineHeight: 22, flex: 1 },
+  confidenceLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  confidenceLabelYes: { fontSize: 11, fontWeight: '800' },
+  confidenceLabelNo: { fontSize: 11, fontWeight: '800' },
   sentimentBarWrap: { height: 44, borderRadius: 12, overflow: 'hidden', marginBottom: 12, position: 'relative' },
   sentimentBarBg: { ...StyleSheet.absoluteFillObject, borderRadius: 12, overflow: 'hidden' },
   sentimentBarNo: { ...StyleSheet.absoluteFillObject, borderRadius: 12, overflow: 'hidden' },

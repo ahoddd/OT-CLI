@@ -1,18 +1,22 @@
 /**
  * OrbDrop™ — list drops, reserve, redeem.
- * Redeem triggers OrbProof (createVerifiedAction + receipt).
+ * Drops = published DROP posts from Firestore; when demo data is on, merges MOCK_DROPS. Redeem triggers OrbProof (createVerifiedAction + receipt).
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth } from '../firebaseConfig';
 import {
   type Drop,
   type Reservation,
   MOCK_DROPS,
   RESERVATIONS_STORAGE_KEY,
 } from '../constants/Drops';
+import { getOrbPosts, orbPostToDrop } from '../services/orbPosts';
+import { useDemoDataEnabled } from './useDemoDataEnabled';
+import { logger } from '../utils/logger';
 
-const USER_ID = 'You'; // MVP: local; replace with auth uid when wired.
+const getUserId = () => auth.currentUser?.uid ?? 'anon';
 
 export interface UseDropsResult {
   drops: Drop[];
@@ -24,8 +28,22 @@ export interface UseDropsResult {
   refresh: () => Promise<void>;
 }
 
+async function loadDropsFromPosts(): Promise<Drop[]> {
+  try {
+    const posts = await getOrbPosts(100);
+    const dropPosts = posts.filter(
+      (p) => p.type === 'DROP' && p.trust.moderationStatus === 'PUBLISHED'
+    );
+    return dropPosts.map(orbPostToDrop);
+  } catch (e) {
+    logger.warn('useDrops load posts:', e);
+    return [];
+  }
+}
+
 export function useDrops(): UseDropsResult {
-  const [drops, setDrops] = useState<Drop[]>(MOCK_DROPS);
+  const { demoDataEnabled } = useDemoDataEnabled();
+  const [drops, setDrops] = useState<Drop[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,24 +53,29 @@ export function useDrops(): UseDropsResult {
       const list: Reservation[] = raw ? JSON.parse(raw) : [];
       setReservations(Array.isArray(list) ? list : []);
     } catch (e) {
-      console.warn('useDrops load reservations:', e);
+      logger.warn('useDrops load reservations:', e);
       setReservations([]);
     }
   }, []);
 
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    await loadReservations();
+    const fromPosts = await loadDropsFromPosts();
+    const merged = demoDataEnabled ? [...fromPosts, ...MOCK_DROPS] : fromPosts;
+    setDrops(merged);
+    setLoading(false);
+  }, [loadReservations, demoDataEnabled]);
+
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await loadReservations();
-      setLoading(false);
-    })();
-  }, [loadReservations]);
+    loadAll();
+  }, [loadAll]);
 
   const persistReservations = useCallback(async (list: Reservation[]) => {
     try {
       await AsyncStorage.setItem(RESERVATIONS_STORAGE_KEY, JSON.stringify(list));
     } catch (e) {
-      console.warn('useDrops persist reservations:', e);
+      logger.warn('useDrops persist reservations:', e);
     }
   }, []);
 
@@ -65,7 +88,7 @@ export function useDrops(): UseDropsResult {
       const reservation: Reservation = {
         id: `res_${now}`,
         dropId,
-        userId: USER_ID,
+        userId: getUserId(),
         status: 'reserved',
         expiresAt: Math.min(now + 30 * 60 * 1000, drop.endAt), // 30 min or drop end
         reserveFeePaid,
@@ -128,7 +151,10 @@ export function useDrops(): UseDropsResult {
 
   const refresh = useCallback(async () => {
     await loadReservations();
-  }, [loadReservations]);
+    const fromPosts = await loadDropsFromPosts();
+    const merged = demoDataEnabled ? [...fromPosts, ...MOCK_DROPS] : fromPosts;
+    setDrops(merged);
+  }, [loadReservations, demoDataEnabled]);
 
   return {
     drops,

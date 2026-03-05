@@ -4,7 +4,7 @@
  * the sphere invite code can derive the key and decrypt. No plaintext on server.
  * Uses crypto-es (Expo-compatible, no native deps, no cost).
  */
-import { AES, enc } from 'crypto-es';
+import { AES, Utf8 } from 'crypto-es';
 
 const KEY_PREFIX = 'orbtap:sphere:';
 
@@ -29,7 +29,7 @@ export function decryptMessage(ciphertext: string, inviteCode: string, sphereId:
   try {
     const key = deriveSecret(inviteCode, sphereId);
     const bytes = AES.decrypt(ciphertext, key);
-    return bytes.toString(enc.Utf8) || '';
+    return bytes.toString(Utf8) || '';
   } catch {
     return '';
   }

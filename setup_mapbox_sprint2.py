@@ -29,7 +29,7 @@ if os.path.exists(app_json_path):
             "@rnmapbox/maps",
             {
                 "RNMapboxMapsImpl": "mapbox",
-                "RNMapboxDownloadToken": "sk.eyJ1IjoiYW1vdXN0YWZhIiwiYSI6ImNta3ZoeGx3aDA2Z3ozZ3B1ZTd0YmE0a2oifQ.B7l4TwOCsjHFF8125-s2Ug"
+                "RNMapboxDownloadToken": "REDACTED_MAPBOX_SECRET_TOKEN"
             }
         ])
         # Also ensure permissions are in ios infoPlist/android

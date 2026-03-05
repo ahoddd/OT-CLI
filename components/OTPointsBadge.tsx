@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS } from '../constants/Colors';
+import { View, Text, StyleSheet, ViewStyle, Image } from 'react-native';
 
-interface OTPointsBadgeProps {
+const OT_COINS_IMAGE = require('../assets/images/ot-coins-pile.png');
+
+export interface OTPointsBadgeProps {
   /** Points amount to show next to the icon (optional) */
   amount?: number | string;
   /** Size of the orb icon in px */
@@ -29,14 +29,12 @@ export function OTPointsBadge({
 
   return (
     <View style={[styles.wrap, compact && styles.row, style]}>
-      <View style={[styles.orbWrap, { width: size, height: size }]}>
-        <LinearGradient
-          colors={[COLORS.gold[0], '#d97706']}
-          style={[styles.orb, { width: size, height: size, borderRadius: size / 2 }]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+      <View style={[styles.coinWrap, { width: size, height: size }]}>
+        <Image
+          source={OT_COINS_IMAGE}
+          style={{ width: size, height: size }}
+          resizeMode="contain"
         />
-        <View style={[styles.core, { width: size * 0.3, height: size * 0.3, borderRadius: size * 0.15 }]} />
       </View>
       {displayAmount !== null && (
         <View style={styles.amountWrap}>
@@ -53,9 +51,7 @@ export function OTPointsBadge({
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'column', alignItems: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  orbWrap: { justifyContent: 'center', alignItems: 'center' },
-  orb: { position: 'absolute', top: 0, left: 0 },
-  core: { backgroundColor: 'rgba(255,255,255,0.9)' },
+  coinWrap: { justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   amountWrap: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   amount: { fontSize: 18, fontWeight: '800', fontVariant: ['tabular-nums'] },
   unit: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5, opacity: 0.9 },

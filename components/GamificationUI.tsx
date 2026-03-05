@@ -1,23 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { TIER_COLORS } from '../constants/MockData';
 
-// LOGIC: Streak determines Ring Color
 const getStreakColor = (streak: number) => {
-  if (streak > 100) return TIER_COLORS.apex; // Red
-  if (streak > 30) return TIER_COLORS.legendary; // Gold
-  if (streak > 14) return TIER_COLORS.rare; // Blue
-  if (streak > 3) return TIER_COLORS.common; // Green
+  if (streak > 100) return TIER_COLORS.apex;
+  if (streak > 30) return TIER_COLORS.legendary;
+  if (streak > 14) return TIER_COLORS.rare;
+  if (streak > 3) return TIER_COLORS.common;
   return 'transparent';
 };
 
 interface UserBadgeProps {
   level: number;
   size?: number;
-  streak?: number; // New Prop
+  streak?: number;
 }
 
 export const UserBadge = ({ level, size = 40, streak = 0 }: UserBadgeProps) => {
@@ -26,7 +25,6 @@ export const UserBadge = ({ level, size = 40, streak = 0 }: UserBadgeProps) => {
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      {/* STREAK RING */}
       {hasRing && (
         <LinearGradient
             colors={[ringColor, 'transparent', ringColor]}
@@ -35,8 +33,6 @@ export const UserBadge = ({ level, size = 40, streak = 0 }: UserBadgeProps) => {
             end={{ x: 1, y: 1 }}
         />
       )}
-      
-      {/* AVATAR CORE */}
       <View style={[styles.core, { 
           width: hasRing ? size - 6 : size, 
           height: hasRing ? size - 6 : size,
@@ -45,8 +41,6 @@ export const UserBadge = ({ level, size = 40, streak = 0 }: UserBadgeProps) => {
       }]}>
         <Ionicons name="person" size={size * 0.5} color="#fff" />
       </View>
-
-      {/* LEVEL BADGE */}
       <View style={[styles.badge, { backgroundColor: COLORS.neonBlue[0] }]}>
         <Text style={styles.levelText}>{level}</Text>
       </View>
@@ -106,7 +100,6 @@ const styles = StyleSheet.create({
   core: { justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   badge: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#000' },
   levelText: { color: '#fff', fontSize: 8, fontWeight: '900' },
-  
   xpContainer: { width: '100%' },
   xpHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
   xpLevelTitle: { color: COLORS.neonBlue[0], fontSize: 11, fontWeight: '800', letterSpacing: 1, marginBottom: 2 },

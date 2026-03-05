@@ -14,8 +14,8 @@ export interface LevelTier {
 export const LEVEL_TIERS: LevelTier[] = [
   { level: 1, title: 'Scout', xpRequired: 0, perk: 'Basic map access & daily orb', perkShort: 'Map + Daily Orb' },
   { level: 2, title: 'Mapper', xpRequired: 500, perk: '2× Grid View — see more partners at once', perkShort: '2× Grid View', nextTeaser: 'Unlock 2× Grid View' },
-  { level: 3, title: 'Orbiter', xpRequired: 1500, perk: 'Custom app icons & priority support', perkShort: 'Custom Icons', nextTeaser: 'Custom icons & priority support' },
-  { level: 4, title: 'Voyager', xpRequired: 3000, perk: '1.1× point multiplier on redemptions', perkShort: '1.1× Multiplier', nextTeaser: '1.1× point multiplier' },
+  { level: 3, title: 'Orbiter', xpRequired: 1500, perk: 'Exclusive Orbiter badge & 1 extra mission reroll per day', perkShort: 'Badge + Reroll', nextTeaser: 'Orbiter badge & extra reroll' },
+  { level: 4, title: 'Voyager', xpRequired: 3000, perk: '1.1× OT multiplier on redemptions', perkShort: '1.1× Multiplier', nextTeaser: '1.1× point multiplier' },
   { level: 5, title: 'Apex', xpRequired: 5000, perk: 'Secret Black Tier venues & early drops', perkShort: 'Black Tier Access', nextTeaser: 'Black Tier venues' },
   { level: 6, title: 'Legend', xpRequired: 10000, perk: 'Exclusive Legend badge & 1.2× multiplier', perkShort: 'Legend Badge', nextTeaser: 'Legend badge & 1.2×' },
   { level: 7, title: 'Orb Master', xpRequired: 25000, perk: 'All perks + Orb Master title on profile', perkShort: 'Orb Master', nextTeaser: 'Orb Master title' },

@@ -47,16 +47,41 @@ Last updated: Gap-fix implementation.
 | `/upgrades` | `app/upgrades.tsx` | Upgrades (tap power) |
 | `/inventory` | `app/inventory.tsx` | Inventory (orb skins) |
 | `/pulse` | `app/pulse.tsx` | OrbPulse™ Live — ranked feed (proof-based) |
-| `/missions` | `app/missions.tsx` | OrbQuest™ daily missions |
+| `/feed` | `app/feed.tsx` | OrbPulse Commerce Feed (OrbFeed) — partner posts, CTAs |
+| `/feed/[id]` | `app/feed/[id].tsx` | OrbFeed post detail — full content, CTA, share |
+| `/drop/[id]` | `app/drop/[id].tsx` | OrbDrop™ detail — reserve / redeem → proof |
+| `/orbswipe` | `app/orbswipe.tsx` | OrbSwipe™ — swipe deck, tray, Fuse My Night (v1.1: Tune, Recap, low-supply fallback) |
+| `/partner/orbswipe` | `app/partner/orbswipe.tsx` | Partner OrbSwipe Cockpit — leads, drops, reviews; Pro: Swipe Studio |
+| `/missions` | `app/missions.tsx` | Missions — daily missions, visit partners, earn OT |
 | `/stats` | `app/stats.tsx` | Your Stats / Partner Insights — points, streak, missions, badges |
 | `/premium` | `app/premium.tsx` | OrbTap Premium — benefits, badge, upgrade CTA |
+| `/work-orders` | `app/work-orders/index.tsx` | OrbWork Orders™ list (customer requests / partner inbox) |
+| `/work-orders/create` | `app/work-orders/create.tsx` | Request Work — create work order (e.g. from partner page) |
+| `/work-orders/[id]` | `app/work-orders/[id].tsx` | Work order detail + timeline; customer Approve/Dispute; partner Accept/Schedule/Milestones/Submit completion |
+| `/opportunities` | `app/opportunities/index.tsx` | OrbOpportunities™ — browse published opportunities (user) |
+| `/opportunities/[id]` | `app/opportunities/[id].tsx` | Opportunity detail + Apply |
+| `/opportunities/my-applications` | `app/opportunities/my-applications.tsx` | User's applications + verified work receipts |
+| `/partner/opportunities` | `app/partner/opportunities/index.tsx` | Partner list opportunities |
+| `/partner/opportunities/create` | `app/partner/opportunities/create.tsx` | Partner create opportunity |
+| `/partner/opportunities/[id]` | `app/partner/opportunities/[id].tsx` | Partner opportunity detail — applicants, accept/reject, verify completion |
+| `/partner/opportunities/records` | `app/partner/opportunities/records.tsx` | Partner records & export (CSV/JSON) for bookkeeping |
+| `/stamp-cards` | `app/stamp-cards/index.tsx` | Stamp Cards — Reward Locker + all cards + Scan to stamp (from Wallet, OrbSheet) |
+| `/partner/stamp-studio` | `app/partner/stamp-studio.tsx` | Stamp Cards — create/manage stamp programs |
+| `/partner/stamp-redeem` | `app/partner/stamp-redeem.tsx` | Stamp Cards — partner redeem customer reward (enter code) |
+| `/meal-mode` | `app/meal-mode.tsx` | Meal Mode — full-screen OrbSwipe meal discovery, tray, Fuse My Meal |
+| `/partner/meal-proposals` | `app/partner/meal-proposals.tsx` | Partner Meal Studio — create/manage meal proposals |
 
 ## Entry points
 
 - App root: `/(tabs)` (map tab).
 - OrbPulse Live: Home "See all" (when isOrbPulseEnabled) → `/pulse`; or direct `/pulse`.
+- OrbSwipe: Orb hub Discover tile "[Name] Tonight" (when isOrbSwipeEnabled) → `/orbswipe`; Directory / Search / All pages → `/orbswipe`. Partner Dashboard "OrbSwipe Cockpit" → `/partner/orbswipe`.
 - Stats: Menu → Stats → `/stats`; or Profile → "View full stats" → `/stats`.
 - Premium: Menu → Premium → `/premium`; or Stats → "Explore Premium" → `/premium`.
 - Auth: `/auth` → `/auth/login`.
 - Legal: `/legal` → directory; then `/legal/privacy`, `/legal/terms`, `/legal/guidelines`, `/legal/acceptable-use`.
 - Data deletion: `/data/delete` (form + submit).
+- OrbWork Orders: Master Directory → OrbWork Orders → `/work-orders`; or Partner page → Request Work → `/work-orders/create?partnerId=…` → then `/work-orders/[id]`.
+- Meal Mode: Sphere page → "OrbSwipe Meals" → `/meal-mode?sphereId=…`. Partner Dashboard → "Meal Studio" → `/partner/meal-proposals`.
+- Commerce Feed: Master Directory → Commerce Feed → `/feed`; Post detail → `/feed/[id]`. Partner Dashboard → Create post → `/partner/posts/create` (when OrbFeed + composer enabled).
+- OrbOpportunities: Master Directory → Opportunities → `/opportunities` (when isOrbOpportunitiesEnabled). Partner Dashboard → Manage opportunities → `/partner/opportunities` (create, list, records/export). User: browse → `/opportunities/[id]` → Apply; My applications → `/opportunities/my-applications`.

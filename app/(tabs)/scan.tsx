@@ -1,4 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  withSpring,
+} from 'react-native-reanimated';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, Linking, Switch } from 'react-native';
 import { CameraView, Camera } from 'expo-camera';
 import * as Location from 'expo-location';
@@ -18,8 +26,10 @@ import { useTheme } from '../../hooks/useTheme';
 import { logVerifiedWin } from '../../services/analytics';
 import { verifyPerkRedeemToken } from '../../services/verifyApi';
 import { useFlags } from '../../components/FlagContext';
+import { useI18n } from '../../context/I18nContext';
 import { earnStamp } from '../../services/stampCardsApi';
 import { APP_STORE_URL, PLAY_STORE_URL } from '../../constants/AppLinks';
+import { Ionicons } from '@expo/vector-icons';
 
 const SCAN_CAMERA_CONSENT_KEY = 'orbtap_scan_camera_consent';
 type ScanCameraConsent = 'granted' | 'denied' | null;
@@ -61,6 +71,7 @@ function parseRedeemUrl(data: string):
 }
 
 export default function ScanScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { flags } = useFlags();
@@ -83,7 +94,21 @@ export default function ScanScreen() {
   const [rememberChoice, setRememberChoice] = useState(false);
   const [gpsState, setGpsState] = useState<GpsLockState>('searching');
   const [userGps, setUserGps] = useState<{ lat: number; lng: number } | null>(null);
+  const [torchOn, setTorchOn] = useState(false);
   const stampScanEnabled = Boolean(flags.moduleStampCards && flags.stampCardsQrStamping);
+
+  // Success flash overlay (one-shot on successful scan; no duplicate frame — ScannerHUD is the single reticle)
+  const successFlashOpacity = useSharedValue(0);
+  const runSuccessFlash = useCallback(() => {
+    successFlashOpacity.value = 0;
+    successFlashOpacity.value = withSequence(
+      withTiming(0.5, { duration: 80 }),
+      withTiming(0, { duration: 320 })
+    );
+  }, []);
+  const successFlashStyle = useAnimatedStyle(() => ({
+    opacity: successFlashOpacity.value,
+  }));
 
   // GPS location for anti-cheat proximity check
   useEffect(() => {
@@ -111,16 +136,16 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.webPlaceholderWrap}>
-          <Text style={[styles.webPlaceholderTitle, { color: colors.text }]}>Scan works in the app</Text>
+          <Text style={[styles.webPlaceholderTitle, { color: colors.text }]}>{t('scan.scanWorksInApp')}</Text>
           <Text style={[styles.webPlaceholderSub, { color: colors.textSecondary }]}>
-            Use the OrbTap app on your phone to scan partner QR codes and redeem perks.
+            {t('scan.scanWorksSub')}
           </Text>
           <View style={styles.storeRow}>
             <TouchableOpacity style={[styles.storeBtn, { backgroundColor: colors.primary }]} onPress={() => Linking.openURL(APP_STORE_URL)} activeOpacity={0.9}>
-              <Text style={styles.storeBtnText}>App Store</Text>
+              <Text style={styles.storeBtnText}>{t('scan.appStore')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.storeBtn, { backgroundColor: colors.primary }]} onPress={() => Linking.openURL(PLAY_STORE_URL)} activeOpacity={0.9}>
-              <Text style={styles.storeBtnText}>Google Play</Text>
+              <Text style={styles.storeBtnText}>{t('scan.googlePlay')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -203,12 +228,14 @@ export default function ScanScreen() {
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
     setScanned(true);
+    runSuccessFlash();
     processScan(data);
   };
 
   const processScan = async (data: string) => {
     const stampParsed = stampScanEnabled ? parseStampUrl(data) : null;
     if (stampParsed) {
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       try {
         const result = await earnStamp({
           partnerId: stampParsed.partnerId,
@@ -256,6 +283,8 @@ export default function ScanScreen() {
       );
       return;
     }
+
+    safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     if (parsed.kind === 'token') {
       try {
@@ -453,17 +482,35 @@ export default function ScanScreen() {
     );
   }
 
+  const frameColor = accentColor;
+
   return (
     <View style={styles.container}>
       <CameraView
         style={StyleSheet.absoluteFillObject}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+        enableTorch={torchOn}
       />
+
+      {/* Success flash overlay (no duplicate reticle — ScannerHUD is the single focus frame) */}
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: frameColor }, successFlashStyle]} pointerEvents="none" />
+
       <ScannerHUD gpsState={gpsState} earningRange={earningRange} />
       <View style={styles.scanBalanceWrap} pointerEvents="box-none">
         <OTPointsBalanceLink amount={balance} size={22} label="pts" compact textColor="#fff" />
       </View>
+
+      {/* Torch toggle */}
+      <TouchableOpacity
+        style={[styles.torchBtn, { backgroundColor: torchOn ? frameColor : 'rgba(0,0,0,0.5)' }]}
+        onPress={() => { safeHaptics.selectionAsync(); setTorchOn((v) => !v); }}
+        accessibilityLabel={torchOn ? 'Turn off flashlight' : 'Turn on flashlight'}
+        accessibilityRole="button"
+      >
+        <Ionicons name={torchOn ? 'flash' : 'flash-outline'} size={22} color={torchOn ? '#000' : '#fff'} />
+      </TouchableOpacity>
+
       <View style={styles.logoWatermark} pointerEvents="none">
         <OrbTapLogoMark variant="watermark" />
       </View>
@@ -497,4 +544,15 @@ const styles = StyleSheet.create({
   secondaryBtnText: { fontWeight: '700', fontSize: 16 },
   scanBalanceWrap: { position: 'absolute', top: 56, left: 16, zIndex: 10 },
   logoWatermark: { position: 'absolute', bottom: 100, right: 16, zIndex: 10 },
+  torchBtn: {
+    position: 'absolute',
+    bottom: 110,
+    right: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
 });

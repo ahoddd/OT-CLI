@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Image } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
 import Svg, { Circle, Path, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import Animated, { 
   useSharedValue, 
@@ -10,11 +10,12 @@ import Animated, {
   Easing 
 } from 'react-native-reanimated';
 import { COLORS } from '../constants/Colors';
+import { useTheme } from '../hooks/useTheme';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-/** Brand logo image (shield/OT) — use for wallet card, auth, directory, etc. */
+/** Brand logo image — shield/gold logo used everywhere (transparent PNG). */
 export const OrbTapLogoImage = ({
   width = 80,
   height,
@@ -27,7 +28,7 @@ export const OrbTapLogoImage = ({
   const h = height ?? width * (120 / 100);
   return (
     <Image
-      source={require('../assets/images/icon.png')}
+      source={require('../assets/images/logo-orbtap.png')}
       style={[{ width, height: h }, style]}
       resizeMode="contain"
     />
@@ -41,6 +42,8 @@ interface LogoProps {
 }
 
 export const OrbTapLogo = ({ width = 120, height = 40, animated = false }: LogoProps) => {
+  const { colors } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
   return (
     <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
       <Svg viewBox="0 0 300 80" width="100%" height="100%">
@@ -50,7 +53,7 @@ export const OrbTapLogo = ({ width = 120, height = 40, animated = false }: LogoP
             <Stop offset="1" stopColor={COLORS.neonBlue[1]} stopOpacity="1" />
           </LinearGradient>
           <LinearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={COLORS.gold[0]} stopOpacity="1" />
+            <Stop offset="0" stopColor={themeGold} stopOpacity="1" />
             <Stop offset="1" stopColor="#b45309" stopOpacity="1" />
           </LinearGradient>
         </Defs>
@@ -100,6 +103,8 @@ export const OrbTapLogo = ({ width = 120, height = 40, animated = false }: LogoP
 };
 
 export const OrbIcon = ({ size = 60 }: { size?: number }) => {
+  const { colors } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
   const rotation = useSharedValue(0);
 
   useEffect(() => {
@@ -140,7 +145,7 @@ export const OrbIcon = ({ size = 60 }: { size?: number }) => {
             animatedProps={animatedProps}
             origin="50, 50"
           />
-          <Circle cx="50" cy="50" r="45" stroke={COLORS.gold[0]} strokeWidth="2" opacity="0.5" strokeDasharray="4 4" />
+          <Circle cx="50" cy="50" r="45" stroke={themeGold} strokeWidth="2" opacity="0.5" strokeDasharray="4 4" />
        </Svg>
     </View>
   );

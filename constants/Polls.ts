@@ -1,12 +1,22 @@
+import type { PartnerTier } from './PartnerTiers';
+
 export interface Poll {
   id: string;
   question: string;
   options: { label: string; votes: number }[];
   totalVotes: number;
   partnerName: string;
-  partnerId?: string; // Optional link to partner profile
+  partnerId?: string;
   type: 'sponsored' | 'featured' | 'standard';
   timeLeft: string;
+  /** Partner tier (silver/gold/platinum). Drives border and accent — same colors as partner tiers. */
+  partnerTier?: PartnerTier;
+  /** Custom accent hex (overrides partnerTier when set). */
+  accentColor?: string;
+  /** Optional one-liner under question. */
+  tagline?: string;
+  /** Creation time (ms since epoch). Used for partner delete-within-8h. */
+  createdAt?: number;
 }
 
 export const MOCK_POLLS: Poll[] = [
@@ -22,7 +32,9 @@ export const MOCK_POLLS: Poll[] = [
     partnerName: "CyberCafe 2077",
     partnerId: "p1",
     type: 'sponsored',
-    timeLeft: "2h 15m"
+    partnerTier: 'platinum',
+    timeLeft: "2h 15m",
+    tagline: "Your pick could be the next release.",
   },
   {
     id: 'ft1',
@@ -36,6 +48,7 @@ export const MOCK_POLLS: Poll[] = [
     partnerName: "Kith NYC",
     partnerId: "p3",
     type: 'featured',
+    partnerTier: 'gold',
     timeLeft: "5h 30m"
   },
   {
@@ -49,6 +62,7 @@ export const MOCK_POLLS: Poll[] = [
     partnerName: "Joe & The Juice",
     partnerId: "p5",
     type: 'standard',
+    partnerTier: 'gold',
     timeLeft: "1d"
   },
   {
@@ -63,6 +77,7 @@ export const MOCK_POLLS: Poll[] = [
     partnerName: "Equinox Bond",
     partnerId: "p4",
     type: 'standard',
+    partnerTier: 'platinum',
     timeLeft: "12h"
   }
 ];

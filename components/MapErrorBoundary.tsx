@@ -22,7 +22,7 @@ export class MapErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.warn('MapErrorBoundary caught:', error?.message ?? error);
+    if (__DEV__) console.warn('MapErrorBoundary caught:', error?.message ?? error);
   }
 
   render() {

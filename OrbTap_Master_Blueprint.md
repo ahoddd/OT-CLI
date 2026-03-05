@@ -190,10 +190,10 @@ Boot proof: npx expo start (confirm screens + required flows work)
 
 DESIGN/TIERS (LOCKED FOR MVP)
 
-Only these tiers exist anywhere in MVP:
-Common, Rare, Apex, Legendary
+Only these membership tiers exist for UI and plans:
+Silver (free), Gold (premium), Legendary (pro)
 
-Do NOT mention or implement Mythic or Elite anywhere.
+Do NOT use the old 4/6-tier rarity names (Common, Rare, Apex, Mythic, Elite) for membership or badges. Membership tokens (Silver/Gold/Platinum or Silver/Gold/Legendary) are separate from any internal rarity mapping for orbs/partners.
 
 BACKEND / INTEGRATIONS
 
@@ -223,7 +223,7 @@ END EXECUTION RULES
 🏆==========================================================
 MASTER MVP BLUEPRINT — ORBTAP (LAUNCH CORE) — "CITY OS MVP"
 
-VERSION: 1.1 (MVP-LOCKED — TIERS: COMMON/RARE/APEX/LEGENDARY ONLY)
+VERSION: 1.1 (MVP-LOCKED — MEMBERSHIP TIERS: SILVER/GOLD/LEGENDARY ONLY)
 OWNER: Gemini (Builder). ChatGPT (Spec Author).
 GOAL: Ship a bootable, polished, legally-safe, viral-capable MVP that proves OrbTap's North Star loop and can scale into the full ecosystem without rewrites.
 
@@ -439,7 +439,7 @@ lastActiveAt
 
 homeCityId (optional)
 
-tier: "free" | "premium"             // user subscription status
+tier: "free" | "premium" | "pro"     // user membership: Silver (free), Gold (premium), Legendary (pro)
 
 settings: { notificationsOptIn, emailOptIn, … }
 
@@ -459,7 +459,7 @@ category
 
 location: { lat, lon, address }
 
-tier: "common" | "rare" | "apex" | "legendary"
+tier: "silver" | "gold" | "legendary"  // partner display tier (maps to plan)
 
 verifiedBadge: boolean
 
@@ -469,7 +469,7 @@ hours?
 
 contact: { phone?, website?, instagram? }
 
-plan: "free" | "pro"                  // partner subscription status
+plan: "free" | "pro"                  // partner subscription: Silver (free), Gold/Legendary (pro)
 
 createdAt, updatedAt
 
@@ -487,7 +487,7 @@ termsShort
 
 redemptionRules: { type: "qr" | "partnerConfirm", cooldownHours, maxPerUserPerDay }
 
-tier: "common" | "rare" | "apex" | "legendary"
+tier: "silver" | "gold" | "legendary"  // perk display tier
 
 active: boolean
 
@@ -583,7 +583,7 @@ perkId
 
 pointsEarned
 
-tier: "common" | "rare" | "apex" | "legendary"
+tier: "silver" | "gold" | "legendary"
 
 createdAt
 
@@ -703,15 +703,15 @@ Cards: translucent dark, hairline borders
 
 Text: high contrast, accessible sizes
 
-Tier colors (ONLY THESE EXIST):
+Membership tier colors (ONLY THESE for badges/UI):
 
-Common = slate grey
+Silver = slate grey (free)
 
-Rare = electric blue
+Gold = gold / amber gradient (premium)
 
-Apex = ruby red / obsidian glow
+Legendary = two-toned purple/gold or premium glow (pro)
 
-Legendary = two-toned gold gradient glow
+(Rarity/orb display may map internally to these three tiers.)
 
 Map pins:
 
@@ -803,7 +803,7 @@ Early access / priority windows for "Drops" (reservation windows)
 
 Advanced filters:
 
-"Verified-only", "Legendary nearby", "Open now"
+"Verified-only", "Legendary tier nearby", "Open now"
 
 Saved routes / favorites + smart notifications (opt-in) for followed partners
 
@@ -853,7 +853,7 @@ export redemption logs (CSV)
 
 Optional verification upgrade path:
 
-partnerConfirm method for high-tier perks (apex/legendary), reduces fraud
+partnerConfirm method for high-tier perks (gold/legendary), reduces fraud
 
 Admin must control:
 
@@ -967,7 +967,7 @@ Expo doctor clean
 
 Docs updated
 
-SPRINT 2: Mapbox Map + Orb Pins + OrbSheet (tier orbs: common/rare/apex/legendary)
+SPRINT 2: Mapbox Map + Orb Pins + OrbSheet (tier orbs: silver/gold/legendary)
 Deliverables:
 
 Mapbox token wiring (EXPO_PUBLIC_MAPBOX_TOKEN)
@@ -1252,13 +1252,11 @@ Network failures never show blank screens; they show a designed fallback
 
 ONLY:
 
-Common (slate grey)
+Silver (slate grey — free)
 
-Rare (electric blue)
+Gold (gold/amber — premium)
 
-Apex (ruby red / obsidian glow)
-
-Legendary (two-tone gold glow)
+Legendary (two-tone purple/gold — pro)
 
 Objective checks:
 
@@ -1504,11 +1502,9 @@ C) Earning (MVP)
 
 Verified win awards points based on tier weighting:
 
-Common: low
+Silver: low
 
-Rare: medium
-
-Apex: high
+Gold: medium
 
 Legendary: very high (scarce)
 

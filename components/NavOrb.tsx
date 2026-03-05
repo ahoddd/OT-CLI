@@ -11,9 +11,10 @@ import Animated, {
   Easing
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+import { safeHaptics, Haptics } from '../utils/safeHaptics';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/Colors';
+import { useTheme } from '../hooks/useTheme';
 
 interface NavOrbProps {
   focused: boolean;
@@ -21,6 +22,8 @@ interface NavOrbProps {
 }
 
 export const NavOrb = ({ focused, onPress }: NavOrbProps) => {
+  const { colors } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
   const router = useRouter();
   const scale = useSharedValue(1);
   const pulseScale = useSharedValue(1);
@@ -58,7 +61,7 @@ export const NavOrb = ({ focused, onPress }: NavOrbProps) => {
   }));
 
   const handlePressIn = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     scale.value = withSpring(0.9);
   };
 
@@ -67,7 +70,7 @@ export const NavOrb = ({ focused, onPress }: NavOrbProps) => {
   };
 
   const handleLongPress = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     scale.value = withSequence(withSpring(1.2), withSpring(1));
     router.push('/(tabs)/scan');
   };
@@ -75,7 +78,7 @@ export const NavOrb = ({ focused, onPress }: NavOrbProps) => {
   return (
     <Pressable
       onPress={() => {
-        Haptics.selectionAsync();
+        safeHaptics.selectionAsync();
         onPress();
       }}
       onLongPress={handleLongPress}
@@ -86,7 +89,7 @@ export const NavOrb = ({ focused, onPress }: NavOrbProps) => {
     >
       <Animated.View style={[styles.pulseRing, animatedPulseStyle]} />
       
-      <Animated.View style={[styles.orbWrapper, animatedOrbStyle]}>
+      <Animated.View style={[styles.orbWrapper, { shadowColor: themeGold }, animatedOrbStyle]}>
         <LinearGradient
           // Explicitly cast the fallback array to [string, string] to match the prop type
           colors={focused ? (COLORS.gold as any) : ['#333', '#111']}
@@ -113,7 +116,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    shadowColor: COLORS.gold[0],
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 10,

@@ -15,6 +15,11 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useAuth } from '../context/AuthContext';
+import {
+  DEFAULT_PUBLIC_PROFILE_VISIBILITY,
+  mergeVisibility,
+  type PublicProfileVisibility,
+} from '../constants/PublicProfileVisibility';
 
 const MAX_FRIENDS = 500;
 
@@ -146,16 +151,46 @@ export function useFriends() {
   );
 
   const setMyProfile = useCallback(
-    async (data: { username?: string; displayName?: string; discoverable?: boolean }): Promise<void> => {
+    async (data: {
+      username?: string;
+      displayName?: string;
+      discoverable?: boolean;
+      photoURL?: string | null;
+      bio?: string;
+      tagline?: string;
+      publicProfileVisibility?: Partial<PublicProfileVisibility>;
+      currentStreak?: number;
+      bestStreak?: number;
+      displayPhotoURL?: string | null;
+      socialLinks?: { twitter?: string; instagram?: string; website?: string };
+      showSpheresOnProfile?: boolean;
+      missionsCompleted?: number;
+      reviewsCount?: number;
+    }): Promise<void> => {
       if (!user) return;
-      const ref = doc(db, 'users', user.uid);
-      const snap = await getDoc(ref);
+      const userRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(userRef);
       const existing = snap.data() ?? {};
-      await setDoc(ref, {
+      const mergedVisibility =
+        data.publicProfileVisibility !== undefined
+          ? mergeVisibility(existing.publicProfileVisibility as Partial<PublicProfileVisibility> | undefined, data.publicProfileVisibility)
+          : (existing.publicProfileVisibility as PublicProfileVisibility | undefined);
+      await setDoc(userRef, {
         ...existing,
         ...(data.username !== undefined && { username: data.username }),
         ...(data.displayName !== undefined && { displayName: data.displayName }),
         ...(data.discoverable !== undefined && { discoverable: data.discoverable }),
+        ...(data.photoURL !== undefined && { photoURL: data.photoURL }),
+        ...(data.bio !== undefined && { bio: data.bio }),
+        ...(data.tagline !== undefined && { tagline: data.tagline }),
+        ...(mergedVisibility !== undefined && { publicProfileVisibility: mergedVisibility }),
+        ...(data.currentStreak !== undefined && { currentStreak: data.currentStreak }),
+        ...(data.bestStreak !== undefined && { bestStreak: data.bestStreak }),
+        ...(data.displayPhotoURL !== undefined && { displayPhotoURL: data.displayPhotoURL }),
+        ...(data.socialLinks !== undefined && { socialLinks: data.socialLinks }),
+        ...(data.showSpheresOnProfile !== undefined && { showSpheresOnProfile: data.showSpheresOnProfile }),
+        ...(data.missionsCompleted !== undefined && { missionsCompleted: data.missionsCompleted }),
+        ...(data.reviewsCount !== undefined && { reviewsCount: data.reviewsCount }),
         updatedAt: serverTimestamp(),
       });
     },

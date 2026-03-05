@@ -8,8 +8,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/Colors';
-
-const GOLD = [COLORS.gold[0], COLORS.gold[1]] as const;
+import { useTheme } from '../hooks/useTheme';
 
 export interface PremiumBadgeProps {
   /** Compact: icon only. Standard: icon + "Premium" */
@@ -18,11 +17,13 @@ export interface PremiumBadgeProps {
 }
 
 export function PremiumBadge({ variant = 'compact', size = 16 }: PremiumBadgeProps) {
+  const { colors } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
   const iconSize = Math.max(12, size - 2);
   return (
     <View style={[styles.wrap, { height: size }]}>
       <LinearGradient
-        colors={[GOLD[0], GOLD[1]]}
+        colors={[themeGold, COLORS.gold[1]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.badge, { width: size, height: size, borderRadius: size / 2 }]}
@@ -32,7 +33,7 @@ export function PremiumBadge({ variant = 'compact', size = 16 }: PremiumBadgePro
         </View>
       </LinearGradient>
       {variant === 'standard' && (
-        <Text style={[styles.label, { fontSize: size * 0.7 }]}>Premium</Text>
+        <Text style={[styles.label, { fontSize: size * 0.7, color: themeGold }]}>Premium</Text>
       )}
     </View>
   );
@@ -55,7 +56,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    color: COLORS.gold[0],
     fontWeight: '700',
     letterSpacing: 0.3,
   },

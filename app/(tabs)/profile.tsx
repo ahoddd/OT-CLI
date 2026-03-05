@@ -48,6 +48,7 @@ import { RitualBadgeDetailModal, LegacyBadgeDetailModal } from '../../components
 import { PremiumBadge } from '../../components/PremiumBadge';
 import { PartnerProBadge } from '../../components/PartnerProBadge';
 import { isAdminEmail } from '../../constants/Admin';
+import { useI18n } from '../../context/I18nContext';
 import { ShareToSocialSheet } from '../../components/ShareToSocialSheet';
 import { userInviteSharePayload } from '../../utils/shareToSocial';
 import { uploadProfileImage } from '../../services/uploadProfileImage';
@@ -69,6 +70,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SPACE, RADIUS, MOTION, SECTION_TITLE } from '../../constants/DesignTokens';
 import { BADGES } from '../../constants/Badges';
+import { StreakMilestoneCard, isStreakMilestone } from '../../components/StreakMilestoneCard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const STREAK_MILESTONE_SHOWN_KEY = 'ORBTAP_STREAK_MILESTONE_SHOWN_';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_PAD = SPACE.base;
@@ -87,6 +92,7 @@ function ProfileHero({
   displayName, username, tagline, avatar, tier, isPartner, isPremium,
   userTier, rank, streak, themeGold, colors,
   onEdit, onShare, onPartnerDash, onLeaderboard, onNotifications, onSettings, onAdmin, isAdmin,
+  t,
 }: {
   displayName: string; username: string; tagline: string; avatar: string | null;
   tier: 'free' | 'premium' | 'pro'; isPartner: boolean; isPremium: boolean; userTier: string;
@@ -94,6 +100,7 @@ function ProfileHero({
   onEdit: () => void; onShare: () => void; onPartnerDash: () => void;
   onLeaderboard: () => void; onNotifications: () => void; onSettings: () => void;
   onAdmin: () => void; isAdmin: boolean;
+  t: (key: string) => string;
 }) {
   const tierColor = isPartner ? themeGold : (tier === 'pro' ? '#A78BFA' : tier === 'premium' ? '#FBBF24' : '#60A5FA');
   const gradients = (HERO_GRADIENTS[tier] ?? HERO_GRADIENTS.free) as [string, string, string];
@@ -148,7 +155,7 @@ function ProfileHero({
               {userTier === 'pro' ? <PartnerProBadge size="small" showIcon /> : null}
               {isPartner ? (
                 <View style={[heroStyles.tierChip, { backgroundColor: themeGold + '33', borderColor: themeGold }]}>
-                  <Text style={[heroStyles.tierChipText, { color: themeGold }]}>PARTNER</Text>
+                  <Text style={[heroStyles.tierChipText, { color: themeGold }]}>{t('profile.partner')}</Text>
                 </View>
               ) : null}
               <View style={[heroStyles.levelChip, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
@@ -163,14 +170,14 @@ function ProfileHero({
             onPress={onShare} activeOpacity={0.88}
           >
             <Ionicons name="share-social" size={14} color="rgba(255,255,255,0.85)" />
-            <Text style={heroStyles.actionPillText}>Share Profile</Text>
+            <Text style={heroStyles.actionPillText}>{t('profile.shareProfile')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[heroStyles.actionPill, { backgroundColor: tierColor, borderColor: tierColor }]}
             onPress={onEdit} activeOpacity={0.88}
           >
             <Ionicons name="pencil" size={14} color="#000" />
-            <Text style={[heroStyles.actionPillText, { color: '#000' }]}>Edit Profile</Text>
+            <Text style={[heroStyles.actionPillText, { color: '#000' }]}>{t('profile.editProfile')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -223,6 +230,7 @@ function StatsTriptych({
   tier: string; isPartner: boolean;
   onBalance: () => void; onStreak: () => void; onLevel: () => void;
 }) {
+  const { t } = useI18n();
   const tierColor = isPartner ? themeGold : (tier === 'pro' ? '#A78BFA' : tier === 'premium' ? '#FBBF24' : '#60A5FA');
   const hour = new Date().getHours();
   const isAtRisk = hour >= 18 && streak > 0 && !hasScannedToday;
@@ -235,7 +243,7 @@ function StatsTriptych({
       <TouchableOpacity style={triptychStyles.col} onPress={onBalance} activeOpacity={0.85}>
         <Ionicons name="wallet" size={16} color={themeGold} style={{ marginBottom: 4 }} />
         <Text style={[triptychStyles.value, { color: themeGold }]}>{balance.toLocaleString()}</Text>
-        <Text style={[triptychStyles.label, { color: colors.textSecondary }]}>OT POINTS</Text>
+        <Text style={[triptychStyles.label, { color: colors.textSecondary }]}>{t('wallet.otPoints').toUpperCase()}</Text>
       </TouchableOpacity>
       <View style={[triptychStyles.divider, { backgroundColor: colors.border }]} />
       <TouchableOpacity style={triptychStyles.col} onPress={onStreak} activeOpacity={0.85}>
@@ -246,7 +254,7 @@ function StatsTriptych({
         </View>
         <Text style={[triptychStyles.label, { color: colors.textSecondary }]}>STREAK</Text>
         {bestStreak > streak && bestStreak > 0 && (
-          <Text style={[triptychStyles.sub, { color: colors.textSecondary }]}>Best {bestStreak}</Text>
+          <Text style={[triptychStyles.sub, { color: colors.textSecondary }]}>{t('profile.best')} {bestStreak}</Text>
         )}
       </TouchableOpacity>
       <View style={[triptychStyles.divider, { backgroundColor: colors.border }]} />
@@ -464,6 +472,7 @@ function formatDeadline(deadlineAt: number): string {
 }
 
 export default function ProfileScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];
@@ -494,6 +503,7 @@ export default function ProfileScreen() {
 
   const [editVisible, setEditVisible] = useState(false);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [streakMilestoneVisible, setStreakMilestoneVisible] = useState(false);
   const [sharePayload, setSharePayload] = useState<{ message: string; url?: string; title?: string } | null>(null);
   const [displayName, setDisplayName] = useState(user?.displayName || 'Explorer');
   const [tagline, setTagline] = useState('');
@@ -504,6 +514,18 @@ export default function ProfileScreen() {
 
   const streak = streakState.currentStreak;
   const bestStreak = streakState.bestStreak;
+
+  // VM2 — Streak milestone card: show once per milestone
+  useEffect(() => {
+    if (!isStreakMilestone(streak)) return;
+    const storageKey = STREAK_MILESTONE_SHOWN_KEY + streak;
+    AsyncStorage.getItem(storageKey).then((shown) => {
+      if (!shown) {
+        AsyncStorage.setItem(storageKey, '1');
+        setTimeout(() => setStreakMilestoneVisible(true), 800);
+      }
+    });
+  }, [streak]);
   const rankPercentile = getRankPercentile(rank.level);
   const totalLegacy = BADGES.length;
   const totalRitual = 40;
@@ -661,6 +683,7 @@ export default function ProfileScreen() {
           onSettings={() => router.push('/settings' as any)}
           onAdmin={() => router.push('/admin' as any)}
           isAdmin={isAdminEmail(user?.email)}
+          t={t}
         />
 
         {/* ② Floating Stats Triptych — overlaps hero by 36px */}
@@ -1017,6 +1040,12 @@ export default function ProfileScreen() {
       )}
       <RitualBadgeDetailModal visible={!!badgeDetail} badge={badgeDetail} onClose={() => setBadgeDetail(null)} />
       <LegacyBadgeDetailModal visible={!!legacyBadgeDetail} badge={legacyBadgeDetail} onClose={() => setLegacyBadgeDetail(null)} />
+      {/* VM2 — Streak milestone card */}
+      <StreakMilestoneCard
+        streak={streak}
+        visible={streakMilestoneVisible}
+        onClose={() => setStreakMilestoneVisible(false)}
+      />
     </View>
   );
 

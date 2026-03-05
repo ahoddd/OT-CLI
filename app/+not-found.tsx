@@ -1,14 +1,27 @@
+import React from 'react';
 import { Link, Stack } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '../hooks/useTheme';
+import { useI18n } from '../context/I18nContext';
+
+const FALLBACK_COLORS = { background: '#0a0a0f', text: '#fff', textSecondary: '#888' };
 
 export default function NotFoundScreen() {
+  const { t } = useI18n();
+  let colors = FALLBACK_COLORS;
+  try {
+    const theme = useTheme();
+    colors = theme?.colors ?? FALLBACK_COLORS;
+  } catch {
+    // Outside theme provider or context failed; use fallback
+  }
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
+      <Stack.Screen options={{ title: t('notFound.title') }} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.title, { color: colors.text }]}>{t('notFound.subtitle')}</Text>
+        <Link href="/" style={styles.link} accessibilityRole="link" accessibilityLabel={t('notFound.goHome')}>
+          <Text style={[styles.linkText, { color: colors.text }]}>{t('notFound.goHome')}</Text>
         </Link>
       </View>
     </>
@@ -21,12 +34,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#000',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
   },
   link: {
     marginTop: 15,
@@ -34,6 +45,5 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 14,
-    color: '#2e78b7',
   },
 });

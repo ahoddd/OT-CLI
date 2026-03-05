@@ -45,14 +45,15 @@ import { MoreSection } from '../components/MoreSection';
 import { KitEmptyState } from '../components/ui';
 import { SPACE } from '../constants/DesignTokens';
 import { MOOD_PRESETS, type MoodId } from '../constants/MissionsMoods';
+import { useI18n } from '../context/I18nContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MOOD_ITEM_WIDTH = (SCREEN_WIDTH - 16 * 2 - 12 * 3) / 4;
 
-const GENERATE_OPTIONS: { option: GenerateOption; label: string; sublabel: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { option: 'all', label: 'All day', sublabel: '3 missions · breakfast, lunch, dinner', icon: 'sunny' },
-  { option: 'lunch_dinner', label: 'Lunch & dinner', sublabel: '2 missions · one check-in each', icon: 'restaurant' },
-  { option: 'dinner', label: 'Dinner', sublabel: '1 mission · one check-in', icon: 'moon' },
+const GENERATE_OPTION_KEYS: { option: GenerateOption; labelKey: string; sublabelKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { option: 'all', labelKey: 'missions.allDay', sublabelKey: 'missions.allDaySub', icon: 'sunny' },
+  { option: 'lunch_dinner', labelKey: 'missions.lunchDinner', sublabelKey: 'missions.lunchDinnerSub', icon: 'restaurant' },
+  { option: 'dinner', labelKey: 'missions.dinner', sublabelKey: 'missions.dinnerSub', icon: 'moon' },
 ];
 
 const MOOD_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -87,16 +88,18 @@ function deadlineShort(deadlineAt: number): string {
 const MEAL_SLOT_COLORS: Record<DailyMission['mealSlot'], string> = { breakfast: '#f59e0b', lunch: '#3b82f6', dinner: '#8b5cf6' };
 
 function MealSlotBadge({ slot }: { slot: DailyMission['mealSlot'] }) {
-  const labels = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
+  const { t } = useI18n();
+  const labelKey = slot === 'breakfast' ? 'missions.breakfast' : slot === 'lunch' ? 'missions.lunch' : 'missions.dinner';
   const color = MEAL_SLOT_COLORS[slot];
   return (
     <View style={[styles.mealPill, { backgroundColor: color + '28', borderColor: color }]}>
-      <Text style={[styles.mealPillText, { color }]}>{labels[slot]}</Text>
+      <Text style={[styles.mealPillText, { color }]}>{t(labelKey)}</Text>
     </View>
   );
 }
 
 export default function MissionsScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];
@@ -464,23 +467,23 @@ export default function MissionsScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Get your missions</Text>
             <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>Pick one to generate today's plan</Text>
             <View style={styles.planGrid}>
-              {GENERATE_OPTIONS.map(({ option, label, sublabel, icon }) => (
+              {GENERATE_OPTION_KEYS.map(({ option, labelKey, sublabelKey, icon }) => (
                 <TouchableOpacity
                   key={option}
                   style={[styles.planCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                   onPress={() => handleGenerate(option)}
                   activeOpacity={0.88}
-                  accessibilityLabel={`Generate missions: ${label}`}
+                  accessibilityLabel={`${t('missions.generate')}: ${t(labelKey)}`}
                   accessibilityRole="button"
                 >
                   <LinearGradient colors={[(themeGold) + '28', (themeGold) + '08']} style={styles.planCardGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
                   <View style={[styles.planCardIconWrap, { backgroundColor: (themeGold) + '25' }]}>
                     <Ionicons name={icon} size={28} color={themeGold} />
                   </View>
-                  <Text style={[styles.planCardTitle, { color: colors.text }]}>{label}</Text>
-                  <Text style={[styles.planCardSub, { color: colors.textSecondary }]}>{sublabel}</Text>
+                  <Text style={[styles.planCardTitle, { color: colors.text }]}>{t(labelKey)}</Text>
+                  <Text style={[styles.planCardSub, { color: colors.textSecondary }]}>{t(sublabelKey)}</Text>
                   <View style={[styles.planCardCta, { backgroundColor: colors.primary + '20' }]}>
-                    <Text style={[styles.planCardCtaText, { color: colors.primary }]}>Generate</Text>
+                    <Text style={[styles.planCardCtaText, { color: colors.primary }]}>{t('missions.generate')}</Text>
                     <Ionicons name="arrow-forward" size={16} color={colors.primary} />
                   </View>
                 </TouchableOpacity>

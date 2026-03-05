@@ -1,429 +1,290 @@
 /**
- * OrbTap Knowledge — Fun facts + motivational quotes.
- * Like, Dislike, Share, Save. New item on app open. Premium design, max engagement.
+ * OrbTap Knowledge — "What's Inside OrbTap" conversion page.
+ * Strategic: converts visitors to members. Shows the North Star loop.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Share,
+  Dimensions,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useTheme } from '../hooks/useTheme';
-import { useKnowledge } from '../context/KnowledgeContext';
+import { useFlags } from '../components/FlagContext';
 import { COLORS } from '../constants/Colors';
-import { ORBTAP_KNOWLEDGE_SHARE_SUFFIX } from '../constants/AppLinks';
-import type { KnowledgeItem } from '../constants/KnowledgeBase';
-import * as Haptics from 'expo-haptics';
+import { safeHaptics, Haptics } from '../utils/safeHaptics';
+import { useI18n } from '../context/I18nContext';
+
+const { width: SCREEN_W } = Dimensions.get('window');
+
+// ─── Animated counter ────────────────────────────────────────────────────────
+
+function AnimatedCounter({ target, suffix = '', duration = 1200 }: { target: number; suffix?: string; duration?: number }) {
+  const [display, setDisplay] = useState(0);
+  const startRef = useRef<number | null>(null);
+  const rafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+
+  useEffect(() => {
+    startRef.current = null;
+    const step = (timestamp: number) => {
+      if (!startRef.current) startRef.current = timestamp;
+      const elapsed = timestamp - startRef.current;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.floor(eased * target));
+      if (progress < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [target, duration]);
+
+  return <Text>{display.toLocaleString()}{suffix}</Text>;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const NORTH_STAR_STEPS = [
+  { icon: 'compass' as const, label: 'Discover', color: '#60a5fa' },
+  { icon: 'location' as const, label: 'Commit', color: '#34d399' },
+  { icon: 'qr-code' as const, label: 'Scan', color: '#fbbf24' },
+  { icon: 'trophy' as const, label: 'Earn', color: '#f59e0b' },
+  { icon: 'gift' as const, label: 'Flex', color: '#a78bfa' },
+  { icon: 'share-social' as const, label: 'Share', color: '#f472b6' },
+];
+
+const TOP_FEATURES = [
+  {
+    icon: 'ticket' as const,
+    title: 'OrbPass™',
+    hook: 'Monthly perks at every partner venue. One tap to unlock.',
+    locked: true,
+  },
+  {
+    icon: 'receipt' as const,
+    title: 'Stamp Cards™',
+    hook: 'Real loyalty cards for your favourite spots. Earn, collect, redeem.',
+    locked: false,
+  },
+  {
+    icon: 'trending-up' as const,
+    title: 'Prediction Markets™',
+    hook: 'Forecast venue buzz. Earn OT when you\'re right.',
+    locked: true,
+  },
+];
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function KnowledgeScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors } = useTheme();
-  const [tab, setTab] = useState<'discover' | 'saved'>('discover');
-  const {
-    currentItem,
-    loading,
-    refresh,
-    ensureFreshOnAppOpen,
-    like,
-    dislike,
-    vote,
-    share,
-    save,
-    unsave,
-    savedItems,
-    isSaved,
-    next,
-  } = useKnowledge();
+  const themeGold = colors.gold ?? COLORS.gold[0];
+  const { flags } = useFlags();
 
-  useFocusEffect(
-    useCallback(() => {
-      ensureFreshOnAppOpen();
-    }, [ensureFreshOnAppOpen])
-  );
+  useEffect(() => {
+    if (!flags.isKnowledgeEnabled) router.back();
+  }, [flags.isKnowledgeEnabled, router]);
+  if (!flags.isKnowledgeEnabled) return null;
 
-  const handleShare = useCallback(async (item: KnowledgeItem) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const authorLine = item.author ? ` — ${item.author}` : '';
-    const message = item.type === 'quote'
-      ? `"${item.text}"${authorLine}${ORBTAP_KNOWLEDGE_SHARE_SUFFIX}`
-      : `Did you know? ${item.text}${ORBTAP_KNOWLEDGE_SHARE_SUFFIX}`;
-    try {
-      await Share.share({ message, title: item.type === 'quote' ? 'Quote' : 'Fun fact' });
-    } catch {}
-  }, []);
+  const handleJoinFree = () => {
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/auth/signup');
+  };
 
-  const handleSave = useCallback((item: KnowledgeItem) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (isSaved(item.id)) unsave(item.id);
-    else save(item);
-  }, [save, unsave, isSaved]);
-
-  const handleNext = useCallback(async () => {
-    Haptics.selectionAsync();
-    await next();
-  }, [next]);
+  const handleSeePro = () => {
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push('/premium');
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.text }]}>Knowledge</Text>
-        <View style={styles.headerRight} />
-      </View>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-      <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={[styles.tab, tab === 'discover' && styles.tabActive]}
-          onPress={() => setTab('discover')}
-        >
-          <Ionicons name="bulb" size={18} color={tab === 'discover' ? COLORS.gold[0] : colors.textSecondary} />
-          <Text style={[styles.tabText, { color: tab === 'discover' ? colors.text : colors.textSecondary }]}>
-            Discover
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, tab === 'saved' && styles.tabActive]}
-          onPress={() => setTab('saved')}
-        >
-          <Ionicons name="bookmark" size={18} color={tab === 'saved' ? COLORS.gold[0] : colors.textSecondary} />
-          <Text style={[styles.tabText, { color: tab === 'saved' ? colors.text : colors.textSecondary }]}>
-            Saved
-          </Text>
-          {savedItems.length > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{savedItems.length}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>What&apos;s Inside OrbTap</Text>
+          <View style={{ width: 24 }} />
+        </View>
 
-      {tab === 'discover' && (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {loading && !currentItem ? (
-            <View style={[styles.card, styles.skeleton, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.skeletonText, { color: colors.textSecondary }]}>Loading…</Text>
-            </View>
-          ) : currentItem ? (
-            <KnowledgeCard
-              item={currentItem}
-              colors={colors}
-              vote={vote}
-              onLike={like}
-              onDislike={dislike}
-              onShare={() => handleShare(currentItem)}
-              onSave={() => handleSave(currentItem)}
-              isSaved={isSaved(currentItem.id)}
-              onNext={handleNext}
-            />
-          ) : (
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Nothing right now. Pull to refresh.</Text>
-              <TouchableOpacity style={[styles.refreshBtn, { borderColor: colors.border }]} onPress={refresh}>
-                <Text style={[styles.refreshBtnText, { color: colors.text }]}>Refresh</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          <View style={{ height: 48 }} />
-        </ScrollView>
-      )}
+        {/* Hero Hook */}
+        <Animated.View entering={FadeInDown.duration(500).springify()} style={[styles.heroCard, { backgroundColor: colors.surface }]}>
+          <LinearGradient
+            colors={[themeGold + '22', 'transparent']}
+            style={StyleSheet.absoluteFillObject}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+          <Animated.Text entering={FadeInDown.delay(80).duration(400)} style={[styles.heroLine, { color: colors.text }]}>
+            Scan real venues.
+          </Animated.Text>
+          <Animated.Text entering={FadeInDown.delay(160).duration(400)} style={[styles.heroLine, { color: themeGold }]}>
+            Earn real points.
+          </Animated.Text>
+          <Animated.Text entering={FadeInDown.delay(240).duration(400)} style={[styles.heroLine, { color: colors.text }]}>
+            Live real experiences.
+          </Animated.Text>
+        </Animated.View>
 
-      {tab === 'saved' && (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.savedContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {savedItems.length === 0 ? (
-            <View style={[styles.emptySaved, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Ionicons name="bookmark-outline" size={48} color={colors.textSecondary} />
-              <Text style={[styles.emptySavedTitle, { color: colors.text }]}>No saved items yet</Text>
-              <Text style={[styles.emptySavedSub, { color: colors.textSecondary }]}>
-                Tap the bookmark on any fact or quote to save it here.
+        {/* Live Proof Strip */}
+        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.statRow}>
+          {[
+            { target: 12400, suffix: '+', label: 'explorers' },
+            { target: 850, suffix: '+', label: 'partners' },
+            { target: 48000, suffix: '+', label: 'perks earned' },
+          ].map((stat, i) => (
+            <View key={i} style={[styles.statCell, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.statValue, { color: themeGold }]}>
+                <AnimatedCounter target={stat.target} suffix={stat.suffix} duration={1200 + i * 200} />
               </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{stat.label}</Text>
             </View>
-          ) : (
-            savedItems.map((item) => (
-              <SavedItemCard
-                key={item.id}
-                item={item}
-                colors={colors}
-                onShare={() => handleShare(item)}
-                onUnsave={() => unsave(item.id)}
-              />
-            ))
-          )}
-          <View style={{ height: 48 }} />
-        </ScrollView>
-      )}
-    </SafeAreaView>
-  );
-}
+          ))}
+        </Animated.View>
 
-function KnowledgeCard({
-  item,
-  colors,
-  vote,
-  onLike,
-  onDislike,
-  onShare,
-  onSave,
-  isSaved,
-  onNext,
-}: {
-  item: KnowledgeItem;
-  colors: { text: string; textSecondary: string; border: string; surface: string };
-  vote: 'like' | 'dislike' | null;
-  onLike: () => void;
-  onDislike: () => void;
-  onShare: () => void;
-  onSave: () => void;
-  isSaved: boolean;
-  onNext: () => void;
-}) {
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
-  const isQuote = item.type === 'quote';
-
-  return (
-    <Animated.View style={animatedStyle}>
-      <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <LinearGradient
-          colors={isQuote ? [COLORS.gold[0] + '12', COLORS.gold[1] + '06'] : [COLORS.neonBlue[0] + '10', 'transparent']}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.cardHeader}>
-          <View style={[styles.pill, { backgroundColor: isQuote ? COLORS.gold[0] + '22' : COLORS.neonBlue[0] + '22' }]}>
-            <Ionicons name={isQuote ? 'chatbox-ellipses' : 'bulb'} size={14} color={isQuote ? COLORS.gold[0] : COLORS.neonBlue[0]} />
-            <Text style={[styles.pillText, { color: isQuote ? COLORS.gold[0] : COLORS.neonBlue[0] }]}>
-              {isQuote ? 'QUOTE' : 'FUN FACT'}
-            </Text>
+        {/* North Star Loop */}
+        <Animated.View entering={FadeInDown.delay(300).duration(400)}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>THE LOOP</Text>
+          <View style={styles.loopGrid}>
+            {NORTH_STAR_STEPS.map((step, i) => (
+              <Animated.View
+                key={step.label}
+                entering={FadeInDown.delay(300 + i * 60).duration(350)}
+                style={[styles.loopCell, { backgroundColor: colors.surface }]}
+              >
+                <View style={[styles.loopIcon, { backgroundColor: step.color + '22' }]}>
+                  <Ionicons name={step.icon} size={22} color={step.color} />
+                </View>
+                <Text style={[styles.loopLabel, { color: colors.text }]}>{step.label}</Text>
+              </Animated.View>
+            ))}
           </View>
-        </View>
+        </Animated.View>
 
-        <Text style={[styles.bodyText, { color: colors.text }]}>
-          {isQuote ? `"${item.text}"` : item.text}
-        </Text>
-        {item.author && (
-          <Text style={[styles.author, { color: colors.textSecondary }]}>— {item.author}</Text>
-        )}
-        {item.funFact && (
-          <View style={[styles.funFactWrap, { backgroundColor: colors.border + '40' }]}>
-            <Ionicons name="sparkles" size={14} color={COLORS.gold[0]} />
-            <Text style={[styles.funFactText, { color: colors.textSecondary }]}>{item.funFact}</Text>
-          </View>
-        )}
+        {/* Top 3 Features */}
+        <Animated.View entering={FadeInDown.delay(400).duration(400)}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>MEMBERS ONLY</Text>
+          {TOP_FEATURES.map((feat, i) => (
+            <Animated.View
+              key={feat.title}
+              entering={FadeInDown.delay(400 + i * 80).duration(400)}
+              style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <View style={[styles.featureIcon, { backgroundColor: themeGold + '22' }]}>
+                <Ionicons name={feat.icon} size={22} color={themeGold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.featureTitle, { color: colors.text }]}>{feat.title}</Text>
+                <Text style={[styles.featureHook, { color: colors.textSecondary }]}>{feat.hook}</Text>
+              </View>
+              {feat.locked && (
+                <View style={[styles.lockBadge, { backgroundColor: colors.border }]}>
+                  <Ionicons name="lock-closed" size={12} color={colors.textSecondary} />
+                  <Text style={[styles.lockText, { color: colors.textSecondary }]}>Members</Text>
+                </View>
+              )}
+            </Animated.View>
+          ))}
+        </Animated.View>
 
-        <View style={styles.actions}>
-          <View style={styles.voteRow}>
-            <TouchableOpacity onPress={onLike} style={styles.actionBtn}>
-              <Ionicons
-                name={vote === 'like' ? 'thumbs-up' : 'thumbs-up-outline'}
-                size={22}
-                color={vote === 'like' ? COLORS.success : colors.textSecondary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onDislike} style={styles.actionBtn}>
-              <Ionicons
-                name={vote === 'dislike' ? 'thumbs-down' : 'thumbs-down-outline'}
-                size={22}
-                color={vote === 'dislike' ? COLORS.danger : colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.shareSaveRow}>
-            <TouchableOpacity onPress={onShare} style={styles.actionBtn}>
-              <Ionicons name="share-outline" size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onSave} style={styles.actionBtn}>
-              <Ionicons
-                name={isSaved ? 'bookmark' : 'bookmark-outline'}
-                size={22}
-                color={isSaved ? COLORS.gold[0] : colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.nextBtn, { borderColor: colors.border }]}
-          onPress={onNext}
-        >
-          <Text style={[styles.nextBtnText, { color: colors.text }]}>Next</Text>
-          <Ionicons name="chevron-forward" size={18} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-    </Animated.View>
-  );
-}
-
-function SavedItemCard({
-  item,
-  colors,
-  onShare,
-  onUnsave,
-}: {
-  item: KnowledgeItem;
-  colors: { text: string; textSecondary: string; border: string; surface: string };
-  onShare: () => void;
-  onUnsave: () => void;
-}) {
-  const isQuote = item.type === 'quote';
-  return (
-    <View style={[styles.savedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <View style={styles.savedCardHeader}>
-        <View style={[styles.pill, styles.pillSmall, { backgroundColor: isQuote ? COLORS.gold[0] + '18' : COLORS.neonBlue[0] + '18' }]}>
-          <Text style={[styles.pillTextSmall, { color: isQuote ? COLORS.gold[0] : COLORS.neonBlue[0] }]}>
-            {isQuote ? 'Quote' : 'Fact'}
+        {/* Tier Teaser */}
+        <Animated.View entering={FadeInDown.delay(500).duration(400)} style={[styles.tierTeaser, { backgroundColor: colors.surface, borderColor: themeGold + '44' }]}>
+          <LinearGradient
+            colors={[themeGold + '11', 'transparent']}
+            style={StyleSheet.absoluteFillObject}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
+          <Text style={[styles.tierLine, { color: colors.textSecondary }]}>
+            <Text style={{ color: colors.text, fontWeight: '600' }}>Free</Text> unlocks the map.
           </Text>
-        </View>
-        <View style={styles.savedCardActions}>
-          <TouchableOpacity onPress={onShare} style={styles.smallActionBtn}>
-            <Ionicons name="share-outline" size={18} color={colors.textSecondary} />
+          <Text style={[styles.tierLine, { color: colors.textSecondary }]}>
+            <Text style={{ color: themeGold, fontWeight: '700' }}>Premium</Text> unlocks the city.
+          </Text>
+          <Text style={[styles.tierLine, { color: colors.textSecondary }]}>
+            <Text style={{ color: '#a78bfa', fontWeight: '700' }}>Pro</Text> unlocks the leaderboard.
+          </Text>
+        </Animated.View>
+
+        {/* Social Proof Quote */}
+        <Animated.View entering={FadeInDown.delay(560).duration(400)} style={[styles.quoteCard, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.quoteText, { color: colors.text }]}>
+            &quot;I&apos;ve saved $340 in 60 days and haven&apos;t paid a cent.&quot;
+          </Text>
+          <View style={styles.quoteAuthor}>
+            <View style={[styles.quoteAvatar, { backgroundColor: themeGold + '44' }]}>
+              <Text style={{ color: themeGold, fontWeight: '700', fontSize: 13 }}>JS</Text>
+            </View>
+            <Text style={[styles.quoteAuthorName, { color: colors.textSecondary }]}>Jamie S. · Denver, CO</Text>
+          </View>
+        </Animated.View>
+
+        {/* CTAs */}
+        <Animated.View entering={FadeInDown.delay(620).duration(400)} style={styles.ctaGroup}>
+          <TouchableOpacity
+            style={[styles.ctaPrimary, { backgroundColor: themeGold }]}
+            onPress={handleJoinFree}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.ctaPrimaryText}>Join free →</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onUnsave} style={styles.smallActionBtn}>
-            <Ionicons name="bookmark" size={18} color={COLORS.gold[0]} />
+          <TouchableOpacity
+            style={[styles.ctaSecondary, { borderColor: colors.border }]}
+            onPress={handleSeePro}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.ctaSecondaryText, { color: colors.textSecondary }]}>See what Pro unlocks</Text>
           </TouchableOpacity>
-        </View>
-      </View>
-      <Text style={[styles.savedBodyText, { color: colors.text }]} numberOfLines={4}>
-        {isQuote ? `"${item.text}"` : item.text}
-      </Text>
-      {item.author && (
-        <Text style={[styles.savedAuthor, { color: colors.textSecondary }]}>— {item.author}</Text>
-      )}
-    </View>
+        </Animated.View>
+
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  backBtn: { marginRight: 12 },
-  title: { fontSize: 18, fontWeight: '700', flex: 1 },
-  headerRight: { width: 36 },
-  tabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    paddingHorizontal: 16,
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    marginRight: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: { borderBottomColor: COLORS.gold[0] },
-  tabText: { fontSize: 15, fontWeight: '600' },
-  badge: {
-    backgroundColor: COLORS.gold[0],
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: { fontSize: 11, fontWeight: '800', color: '#000' },
-  scroll: { flex: 1 },
-  scrollContent: { padding: 20 },
-  savedContent: { padding: 20 },
-  card: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 22,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  skeleton: { minHeight: 200, justifyContent: 'center', alignItems: 'center' },
-  skeletonText: { fontSize: 15 },
-  emptyText: { fontSize: 15, textAlign: 'center', marginBottom: 16 },
-  refreshBtn: { alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, borderWidth: 1 },
-  refreshBtnText: { fontSize: 15, fontWeight: '600' },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-  },
-  pillText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.8 },
-  pillSmall: { paddingHorizontal: 8, paddingVertical: 4 },
-  pillTextSmall: { fontSize: 10, fontWeight: '700' },
-  cardHeader: { marginBottom: 16 },
-  bodyText: { fontSize: 18, fontWeight: '600', lineHeight: 26, marginBottom: 12 },
-  author: { fontSize: 15, fontStyle: 'italic', marginBottom: 12 },
-  funFactWrap: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  funFactText: { fontSize: 13, lineHeight: 19, flex: 1 },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  voteRow: { flexDirection: 'row', gap: 8 },
-  shareSaveRow: { flexDirection: 'row', gap: 8 },
-  actionBtn: { padding: 8 },
-  nextBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  nextBtnText: { fontSize: 15, fontWeight: '700' },
-  emptySaved: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptySavedTitle: { fontSize: 17, fontWeight: '700', marginTop: 16, marginBottom: 8 },
-  emptySavedSub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  savedCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-  },
-  savedCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  savedCardActions: { flexDirection: 'row', gap: 4 },
-  smallActionBtn: { padding: 6 },
-  savedBodyText: { fontSize: 15, lineHeight: 22 },
-  savedAuthor: { fontSize: 13, fontStyle: 'italic', marginTop: 6 },
+  scroll: { paddingBottom: 60 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
+  headerTitle: { fontSize: 16, fontWeight: '700' },
+  heroCard: { margin: 20, borderRadius: 24, padding: 28, overflow: 'hidden', gap: 4 },
+  heroLine: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+  statRow: { flexDirection: 'row', marginHorizontal: 20, gap: 10, marginBottom: 28 },
+  statCell: { flex: 1, alignItems: 'center', paddingVertical: 16, borderRadius: 16 },
+  statValue: { fontSize: 22, fontWeight: '800' },
+  statLabel: { fontSize: 11, marginTop: 2 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, marginHorizontal: 20, marginBottom: 12 },
+  loopGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 20, gap: 10, marginBottom: 28, justifyContent: 'space-between' },
+  loopCell: { width: (SCREEN_W - 40 - 20) / 3, alignItems: 'center', paddingVertical: 14, borderRadius: 16, gap: 6 },
+  loopIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  loopLabel: { fontSize: 12, fontWeight: '600' },
+  featureCard: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 10, padding: 16, borderRadius: 16, borderWidth: 1, gap: 14 },
+  featureIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  featureTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  featureHook: { fontSize: 13, lineHeight: 18 },
+  lockBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
+  lockText: { fontSize: 11, fontWeight: '600' },
+  tierTeaser: { margin: 20, padding: 24, borderRadius: 20, borderWidth: 1.5, overflow: 'hidden', gap: 8, marginBottom: 12 },
+  tierLine: { fontSize: 17, lineHeight: 26 },
+  quoteCard: { marginHorizontal: 20, marginBottom: 24, padding: 20, borderRadius: 16 },
+  quoteText: { fontSize: 16, fontStyle: 'italic', lineHeight: 24, marginBottom: 12 },
+  quoteAuthor: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  quoteAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  quoteAuthorName: { fontSize: 13 },
+  ctaGroup: { marginHorizontal: 20, gap: 10, marginBottom: 20 },
+  ctaPrimary: { paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
+  ctaPrimaryText: { fontSize: 17, fontWeight: '800', color: '#000' },
+  ctaSecondary: { paddingVertical: 14, borderRadius: 16, alignItems: 'center', borderWidth: 1.5 },
+  ctaSecondaryText: { fontSize: 15, fontWeight: '600' },
 });

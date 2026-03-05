@@ -1,60 +1,75 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { OptimizedImage } from './OptimizedImage';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../hooks/useTheme';
-import { Partner, TIER_COLORS } from '../constants/MockData';
-import { HOLO_COLORS, SHINE_COLORS, getTierBorderWidth, getTierShineOpacity } from '../constants/PremiumStyles';
-import * as Haptics from 'expo-haptics';
+import { OrbTapLogoMark } from './OrbTapLogoMark';
+import { Partner, ORBTAP_UNIVERSE_PARTNER_ID } from '../constants/MockData';
+import { getPartnerHeroImage } from '../constants/PartnerCategoryPlaceholders';
+import { PARTNER_TIER_COLORS, getPartnerTierBorderWidth, getPartnerTierShineOpacity, getPartnerTierShadowAll } from '../constants/PartnerTiers';
+import { safeHaptics, Haptics } from '../utils/safeHaptics';
 
 const CARD_HEIGHT = 120;
 
 interface FeaturedPartnerCardProps {
   partner: Partner;
+  /** Override hero image (e.g. admin-uploaded spot image). */
+  customImageUrl?: string | null;
+  /** Label override, e.g. "Wildcard" for free-tier spot. */
+  badgeLabel?: string;
 }
 
 /**
  * Premium Featured Partner spot — holographic, image-ready, high-demand placement.
  * Partners upload an image; card uses unique OrbTap effects so the spot feels worth top dollar.
  */
-export function FeaturedPartnerCard({ partner }: FeaturedPartnerCardProps) {
+export function FeaturedPartnerCard({ partner, customImageUrl, badgeLabel = 'ORBTAP FEATURED' }: FeaturedPartnerCardProps) {
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, textStyles } = useTheme();
   const [imageError, setImageError] = useState(false);
-  const tierColor = TIER_COLORS[partner.tier];
-  const showImage = partner.featuredImageUrl && !imageError;
-  const holoPadding = getTierBorderWidth(partner.tier);
-  const shineOpacity = getTierShineOpacity(partner.tier);
+  const tierColor = PARTNER_TIER_COLORS[partner.tier];
+  const heroImageUrl = customImageUrl ?? getPartnerHeroImage(partner);
+  const showImage = !imageError;
+  const holoPadding = getPartnerTierBorderWidth(partner.tier);
+  const shineOpacity = getPartnerTierShineOpacity(partner.tier);
+  const tierShadow = getPartnerTierShadowAll(partner.tier);
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/partner/${partner.id}` as any);
   };
 
   return (
     <TouchableOpacity
-      style={styles.outer}
+      style={[styles.outer, tierShadow]}
       onPress={handlePress}
       activeOpacity={0.95}
     >
-      {/* Holographic border — gradient wrapper */}
+      {/* Tier-colored border — silver/gold/platinum by partner tier */}
       <LinearGradient
-        colors={[...HOLO_COLORS]}
+        colors={[tierColor, tierColor + 'dd', tierColor] as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.borderGradient, { padding: holoPadding }]}
       >
-        <View style={[styles.cardInner, { backgroundColor: isDark ? '#0a0a0f' : '#111118' }]}>
+        <View style={[styles.cardInner, { backgroundColor: colors.surface }]}>
           {/* Background: partner image or holographic gradient */}
           {showImage ? (
             <>
-              <Image
-                source={{ uri: partner.featuredImageUrl! }}
-                style={StyleSheet.absoluteFill}
-                resizeMode="cover"
-                onError={() => setImageError(true)}
-              />
+              {partner.id === ORBTAP_UNIVERSE_PARTNER_ID ? (
+                <View style={[StyleSheet.absoluteFill, styles.orbtapLogoBg]}>
+                  <OrbTapLogoMark variant="hero" width={72} height={62} />
+                </View>
+              ) : (
+                <OptimizedImage
+                  source={{ uri: heroImageUrl }}
+                  style={StyleSheet.absoluteFill}
+                  resizeMode="cover"
+                  onError={() => setImageError(true)}
+                />
+              )}
               <LinearGradient
                 colors={['transparent', 'transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']}
                 style={StyleSheet.absoluteFill}
@@ -71,9 +86,9 @@ export function FeaturedPartnerCard({ partner }: FeaturedPartnerCardProps) {
             />
           )}
 
-          {/* Holographic shine overlay */}
+          {/* Tier-tinted shine overlay */}
           <LinearGradient
-            colors={[...SHINE_COLORS]}
+            colors={[tierColor + '18', tierColor + '08', 'transparent']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[StyleSheet.absoluteFill, styles.shineOverlay, { opacity: shineOpacity }]}
@@ -96,14 +111,14 @@ export function FeaturedPartnerCard({ partner }: FeaturedPartnerCardProps) {
               end={{ x: 1, y: 1 }}
             >
               <Ionicons name="sparkles" size={12} color="#fff" />
-              <Text style={styles.badgeText}>ORBTAP FEATURED</Text>
+              <Text style={styles.badgeText}>{badgeLabel}</Text>
             </LinearGradient>
           </View>
 
           {/* Content — glass bar at bottom */}
           <View style={styles.contentBar}>
             <View style={styles.textBlock}>
-              <Text style={styles.name} numberOfLines={1}>{partner.name}</Text>
+              <Text style={[textStyles.heading, styles.name]} numberOfLines={1}>{partner.name}</Text>
               <Text style={[styles.category, { color: 'rgba(255,255,255,0.75)' }]} numberOfLines={1}>{partner.category}</Text>
               <Text style={[styles.cta, { color: tierColor }]}>Tap to visit · Get perks</Text>
             </View>
@@ -120,11 +135,11 @@ export function FeaturedPartnerCard({ partner }: FeaturedPartnerCardProps) {
 const styles = StyleSheet.create({
   outer: {
     borderRadius: 18,
-    shadowColor: '#8b5cf6',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 10,
   },
   borderGradient: {
     borderRadius: 18,
@@ -134,6 +149,12 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     overflow: 'hidden',
   },
+  orbtapLogoBg: {
+    backgroundColor: '#020617',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orbtapLogoImage: { width: 72, height: 72 },
   shineOverlay: {
     opacity: 0.9,
     pointerEvents: 'none',

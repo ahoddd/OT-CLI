@@ -1,29 +1,36 @@
-# OrbTap Viral Growth Levers
+# Viral Growth — Launch & Long-Term
 
-Built-in hooks to maximize sharing and referrals so OrbTap can scale and attract top investors.
+## User referral (invite friends)
 
-## 1. Shareable content (Knowledge)
+- **Flow:** User A shares link → User B opens `/invite?invite=A_UID` → lands on invite screen → "Create account" → signup with param → after signup, `recordReferredBy(newUid, A_UID)` writes to Firestore.
+- **Bonus:** Cloud Function `onUserReferralWritten` fires when `users/{uid}` has `referredBy` set; awards **50 OT** to both referrer and referee; sets `userReferralBonusAwarded: true`.
+- **Share entry points:** Profile "Invite friends" card (Share sheet with `userInviteUrl(uid)` and `USER_INVITE_MESSAGE`).
+- **Onboarding:** "Invite friends — you both get 50 OT when they join. Find it in Profile."
+- **Deep link:** `https://orbtap.com/invite?invite={uid}` (configure in app.json / linking for store builds).
 
-- **Fun facts & quotes** — Every share includes the app link (`ORBTAP_KNOWLEDGE_SHARE_SUFFIX` in `constants/AppLinks.ts`). Set `EXPO_PUBLIC_APP_LINK` to your store or landing URL.
-- **Like / Dislike / Share / Save** — Users engage with content; sharing is one tap. Saved items create reason to return.
-- **New on every app open** — Fresh fact or quote when the app comes to foreground drives re-opens and shares.
+## Partner referral
 
-## 2. Invite & referral
+- **Flow:** Partner shares referral link after applying; referee applies with code; when referee is approved, both get 100 OT (see PARTNER_REFERRAL.md).
 
-- **Invite flow** — `app/invite/[code].tsx` handles sphere invites. Use the same pattern for app referral: share link with `?ref=USER_ID` or `/invite/CODE`, reward both sides (e.g. bonus points).
-- **Invite message** — `ORBTAP_INVITE_MESSAGE` in `constants/AppLinks.ts` is ready for "Invite friends" share sheet. Wire from Profile or Directory to `Share.share({ message: ORBTAP_INVITE_MESSAGE })` and optionally use `expo-linking` to build a referral URL.
+## Share hooks (existing)
 
-## 3. Premium transparency (retention)
+- **Proof:** Share message + link to `/proof/{id}`. Copy from `constants/ViralCopy.ts` (proofShareMessage) — "Just scored X OT at [Partner] — verified on OrbTap. You can earn too."
+- **Feed/OrbSignal:** Share on posts and markets. Feed uses `FEED_SHARE_HOOK`; partner page uses `PARTNER_SHARE_HOOK(name)`.
+- **Drops:** Reserve/redeem flow drives to proof share.
+- **OrbSwipe Tonight Recap:** After Fuse, share uses `TONIGHT_RECAP_SHARE_HOOK` and "Share your night" CTA; deep link to `/orbswipe`.
 
-- **Premium members always see benefits** — Premium and Compare plans screens show full "What you get" and "Compare Free vs Premium" so members (and friends/family you gift) see value and don’t cancel.
-- **Stats** — Premium users see "View membership benefits" → Compare plans, so they can revisit what they have.
+**Single source of truth:** All viral and habit-forming copy lives in `constants/ViralCopy.ts`. Invite/default share re-exported via `AppLinks` for backward compatibility.
 
-## 4. Next steps to go viral
+## Making OrbTap inevitable
 
-- Add **referral codes** in Profile: "Invite friends" → share link with code, grant points when invitee signs up.
-- Add **deep link** for invite: `orbtap://invite/CODE` or `https://orbtap.com/invite/CODE` so shared links open the app.
-- **Leaderboards & social proof** — Already present; highlight "Join 12k+ Explorers" and friend activity.
-- **OrbPulse / Drops** — FOMO and "live" content drive opens; keep pushing timely, exclusive content.
-- **Premium as status** — Badge and benefits are visible; encourage sharing "I’m on OrbTap Premium" with a share card or story template.
+1. **Viral loops:** User referral + partner referral reward both sides; low cost (OT Points), high shareability.
+2. **Proof as social proof:** Verified receipts are shareable; "I did this" builds FOMO and trust.
+3. **Scarcity:** Drops, limited slots, "X left" copy (see partner apply, feed).
+4. **Retention:** Streaks, quests, wallet balance, following feed — give reasons to return.
+5. **Local moat:** Map + partners + proof = defensible local discovery; gets better with more users and partners.
 
-Setting `EXPO_PUBLIC_APP_LINK` (and optional referral params) ties all share surfaces to your real URL for maximum conversion.
+## Next (optional)
+
+- Referral leaderboard (top inviters get bonus).
+- Share image cards (OG image for proof/drop links).
+- Universal links / AASA for `orbtap.com/invite?invite=`.

@@ -9,6 +9,16 @@ export const LEDGER_REASON = {
   EMIT_VERIFIED_CHECKIN: 'EMIT_VERIFIED_CHECKIN',
   EMIT_DROP_REDEEM: 'EMIT_DROP_REDEEM',
   EMIT_QUEST_COMPLETE: 'EMIT_QUEST_COMPLETE',
+  EMIT_WORK_ORDER_COMPLETE: 'EMIT_WORK_ORDER_COMPLETE',
+  EMIT_PLAN_STEP_COMPLETE: 'EMIT_PLAN_STEP_COMPLETE',
+  EMIT_PLAN_COMPLETE_BONUS: 'EMIT_PLAN_COMPLETE_BONUS',
+  EMIT_STREAK_DAILY_BONUS: 'EMIT_STREAK_DAILY_BONUS',
+  EMIT_STREAK_WEEKLY_BONUS: 'EMIT_STREAK_WEEKLY_BONUS',
+  EMIT_POLL_VOTE: 'EMIT_POLL_VOTE',
+  EMIT_DAILY_ORB_RITUAL: 'EMIT_DAILY_ORB_RITUAL',
+  EMIT_DAILY_ORB_RITUAL_BONUS: 'EMIT_DAILY_ORB_RITUAL_BONUS',
+  EMIT_STAMP_CARD_COMPLETE_BONUS: 'EMIT_STAMP_CARD_COMPLETE_BONUS',
+  EMIT_STAMP_CARD_OT_BONUS: 'EMIT_STAMP_CARD_OT_BONUS',
   BURN_DROP_RESERVE_FEE: 'BURN_DROP_RESERVE_FEE',
   BURN_EARLY_ACCESS_UNLOCK: 'BURN_EARLY_ACCESS_UNLOCK',
   BURN_QUEST_REROLL: 'BURN_QUEST_REROLL',
@@ -18,7 +28,10 @@ export const LEDGER_REASON = {
   BURN_RECEIPT_COSMETICS: 'BURN_RECEIPT_COSMETICS',
   BURN_CIRCLE_BONUS_POOL: 'BURN_CIRCLE_BONUS_POOL',
   BURN_PULSE_ALERTS_FILTERS: 'BURN_PULSE_ALERTS_FILTERS',
+  BURN_MISSION_BOOST: 'BURN_MISSION_BOOST',
   TREASURY_ALLOCATED: 'TREASURY_ALLOCATED',
+  EMIT_FRIEND_PASS_FRIEND_BONUS: 'EMIT_FRIEND_PASS_FRIEND_BONUS',
+  EMIT_FRIEND_PASS_CREATOR_BONUS: 'EMIT_FRIEND_PASS_CREATOR_BONUS',
   ADJUST_ADMIN: 'ADJUST_ADMIN',
 } as const;
 
@@ -29,6 +42,7 @@ export interface EmissionRates {
   checkin: number;
   dropRedeem: number;
   questComplete: number;
+  workOrderComplete: number;
   firstVerifiedBonus: number;
   streakBonusCap: number;
 }
@@ -37,6 +51,8 @@ export interface EmissionCaps {
   perUserDailyEarn: number;
   perPartnerDailyEmit: number;
   perCityDailyEarn: number;
+  /** Max OT Points from Sphere Plan step/complete earns per user per day (anti-farm). */
+  planEarnDailyCap: number;
 }
 
 export interface BurnRule {
@@ -75,6 +91,7 @@ export const DEFAULT_ORBINOMICS_POLICY: OrbinomicsPolicy = {
     checkin: 25,
     dropRedeem: 75,
     questComplete: 50,
+    workOrderComplete: 60,
     firstVerifiedBonus: 100,
     streakBonusCap: 20,
   },
@@ -82,6 +99,7 @@ export const DEFAULT_ORBINOMICS_POLICY: OrbinomicsPolicy = {
     perUserDailyEarn: 500,
     perPartnerDailyEmit: 1000,
     perCityDailyEarn: 50000,
+    planEarnDailyCap: 150,
   },
   burnRules: [
     { productKey: 'drop_reserve_fee', costPoints: 10, maxPerDay: 5 },

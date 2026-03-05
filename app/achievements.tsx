@@ -17,6 +17,7 @@ import { safeHaptics } from '../utils/safeHaptics';
 import type { BadgeDef } from '../constants/Badges';
 import { useStreak } from '../hooks/useStreak';
 import { useEffectiveTier } from '../hooks/useEffectiveTier';
+import { useI18n } from '../context/I18nContext';
 
 const CATEGORIES: { key: string; label: string }[] = [
   { key: 'founding', label: 'FOUNDING' },
@@ -29,6 +30,7 @@ const CATEGORIES: { key: string; label: string }[] = [
 ];
 
 export default function AchievementsScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];

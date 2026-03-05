@@ -4,9 +4,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // User profile (username, discoverable) — owner write; readable when discoverable or by friends
+    // User profile (username, discoverable) — owner write; readable when discoverable, owner, or friend
     match /users/{uid} {
-      allow read: if request.auth != null && (resource.data.discoverable == true || request.auth.uid == uid);
+      allow read: if request.auth != null && (
+        resource.data.discoverable == true ||
+        request.auth.uid == uid ||
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(uid))
+      );
       allow create, update, delete: if request.auth != null && request.auth.uid == uid;
     }
 
@@ -18,6 +22,21 @@ service cloud.firestore {
     }
     match /users/{uid}/friendRequestsReceived/{fromUid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/followsPartners/{partnerId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/devicePushTokens/{tokenId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // Notification preferences (push categories) — owner only; Cloud Functions read for sending
+    match /users/{uid}/private/notificationPreferences {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // In-app notification center — owner read/update/delete; create only via Cloud Functions
+    match /users/{uid}/notifications/{notificationId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == uid;
+      allow create: if false;
     }
 
     // Sphere chat — encrypted payloads; any authenticated user can read/write (decryption requires invite code)
@@ -37,12 +56,271 @@ service cloud.firestore {
     match /redemptionTokens/{tokenId} {
       allow read, write: if false;
     }
+    // Perk redeem tokens (user-bound one-time QR) — backend only (createPerkRedeemToken / verifyPerkRedeemToken)
+    match /perkRedeemTokens/{tokenId} {
+      allow read, write: if false;
+    }
     match /partners/{partnerId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    // Partner analytics (views, follows, reviews, missions) — app records; partners/admin read
+    match /partnerAnalytics/{docId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+    match /perks/{perkId} {
       allow read: if request.auth != null;
       allow write: if false;
     }
     match /meta/{docId} {
       allow read, write: if false;
     }
+    // Founding stats etc. — backend only (Cloud Functions)
+    match /metaStats/{docId} {
+      allow read, write: if false;
+    }
+    // Verified actions, ledgers, idempotency, arena, trust — backend only
+    match /verifiedActions/{docId} {
+      allow read, write: if false;
+    }
+    match /ledgers/{uid} {
+      allow read, write: if false;
+    }
+    match /ledgers/{uid}/entries/{entryId} {
+      allow read, write: if false;
+    }
+    match /earnIdempotency/{docId} {
+      allow read, write: if false;
+    }
+    match /integrityEvents/{docId} {
+      allow read, write: if false;
+    }
+    match /ritualClaims/{docId} {
+      allow read, write: if false;
+    }
+    // Work orders, proof packs, job proof — backend only
+    match /workOrders/{docId} {
+      allow read, write: if false;
+    }
+    match /proofPacks/{docId} {
+      allow read, write: if false;
+    }
+    match /jobProofReceipts/{docId} {
+      allow read, write: if false;
+    }
+    match /partnerProofPortfolios/{docId} {
+      allow read, write: if false;
+    }
+    match /workOrderAudit/{docId} {
+      allow read, write: if false;
+    }
+    // Rate limits (verify, vote, spend, work order) — backend only
+    match /rateLimitVerify/{docId} {
+      allow read, write: if false;
+    }
+    match /rateLimitVote/{docId} {
+      allow read, write: if false;
+    }
+    match /rateLimitSpend/{docId} {
+      allow read, write: if false;
+    }
+    match /rateLimitWorkOrder/{docId} {
+      allow read, write: if false;
+    }
+    // Invite codes (apply via Cloud Function) — backend only
+    match /inviteCodes/{docId} {
+      allow read, write: if false;
+    }
+    // Push config (poll push, deadline reminder) — set via Admin callable only
+    match /config/{docId} {
+      allow read, write: if false;
+    }
+
+    // Global announcements (Super Admin) — read by any authenticated user; write via Cloud Function only
+    match /globalAnnouncements/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Support requests — authenticated users can create; admin reads via console/backend
+    match /supportRequests/{docId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
+    // Data deletion requests — any user can create (compliance); admin reads via console/backend
+    match /dataDeletionRequests/{docId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
+    // Partner applications — anyone can create; admin reads via console
+    match /partnerApplications/{docId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
+    // Badge definitions (admin-created) — read by all authenticated; write via Cloud Function only
+    match /badgeDefinitions/{badgeId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Orb Signal forecasts (user votes) — user can create and read own; delete via Cloud Function only
+    match /orbsignalForecasts/{forecastId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // OrbVote polls — read by all; create/update via admin or Cloud Function
+    match /polls/{pollId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+    match /pollVotes/{voteId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // OrbFeed posts — partners create; all authenticated users read published
+    match /posts/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // App config (featured partners, sponsored ads config) — backend only
+    match /appConfig/{docId} {
+      allow read, write: if false;
+    }
+    // Sponsored ads — backend (Cloud Functions) only
+    match /sponsoredAds/{adId} {
+      allow read, write: if false;
+    }
+
+    // OrbBounty™ — bounties and bids: backend (Cloud Functions) only
+    match /bounties/{bountyId} {
+      allow read, write: if false;
+    }
+    match /bounties/{bountyId}/bids/{bidId} {
+      allow read, write: if false;
+    }
+    match /orbtapConfig/orbBounty {
+      allow read, write: if false;
+    }
+    match /partners/{partnerId}/bountySettings {
+      allow read, write: if false;
+    }
+    match /partners/{partnerId}/bountyBidRateLimit/{docId} {
+      allow read, write: if false;
+    }
+
+    // OrbIntent™ — intents, offers, rules, deal done cards, audit: backend only
+    match /intents/{intentId} {
+      allow read, write: if false;
+    }
+    match /intents/{intentId}/offers/{offerId} {
+      allow read, write: if false;
+    }
+    match /rules/{ruleId} {
+      allow read, write: if false;
+    }
+    match /dealDoneCards/{cardId} {
+      allow read, write: if false;
+    }
+    match /orbIntentEvents/{eventId} {
+      allow read, write: if false;
+    }
+    match /orbtapConfig/orbIntent {
+      allow read, write: if false;
+    }
+    match /partners/{partnerId}/intentSettings {
+      allow read, write: if false;
+    }
+    match /partners/{partnerId}/intentOfferRateLimit/{docId} {
+      allow read, write: if false;
+    }
+
+    // OrbPass™ — redemptions, ledger, events, config: backend only
+    match /orbPassRedemptions/{redemptionId} {
+      allow read, write: if false;
+    }
+    match /orbPassPartnerLedger/{entryId} {
+      allow read, write: if false;
+    }
+    match /orbPassEvents/{eventId} {
+      allow read, write: if false;
+    }
+    match /orbtapConfig/orbPass {
+      allow read, write: if false;
+    }
+    match /partners/{partnerId}/orbPassSettings {
+      allow read, write: if false;
+    }
+    match /orbPassVelocity/{docId} {
+      allow read, write: if false;
+    }
+    match /orbPassUserMonth/{docId} {
+      allow read, write: if false;
+    }
+
+    // OrbPilot™ — campaigns, windows, slots, visits, trust, PINs, attempts, engine runs, audit: backend only
+    match /orbPilotCampaigns/{campaignId} {
+      allow read, write: if false;
+    }
+    match /orbPilotWindows/{windowId} {
+      allow read, write: if false;
+    }
+    match /orbPilotSlots/{slotId} {
+      allow read, write: if false;
+    }
+    match /orbPilotVisits/{visitId} {
+      allow read, write: if false;
+    }
+    match /orbPilotUserTrust/{userId} {
+      allow read, write: if false;
+    }
+    match /orbPilotPartnerPins/{partnerId} {
+      allow read, write: if false;
+    }
+    match /orbPilotAttempts/{attemptId} {
+      allow read, write: if false;
+    }
+    match /orbPilotEngineRuns/{runId} {
+      allow read, write: if false;
+    }
+    match /orbPilotAuditLogs/{logId} {
+      allow read, write: if false;
+    }
+    match /orbtapConfig/orbPilot {
+      allow read, write: if false;
+    }
+    match /orbPilotKillSwitches/{scopeId} {
+      allow read, write: if false;
+    }
+
+    // OrbPilot Appendix 3 — Disputes, spend ledger, restrictions, consent: backend only
+    match /orbPilotDisputes/{disputeId} {
+      allow read, write: if false;
+    }
+    match /partnerSpendLedger/{entryId} {
+      allow read, write: if false;
+    }
+    match /orbPilotUserRestrictions/{userId} {
+      allow read, write: if false;
+    }
+    match /orbPilotPartnerRestrictions/{partnerId} {
+      allow read, write: if false;
+    }
+    match /orbPilotConsentRecords/{recordId} {
+      allow read, write: if false;
+    }
+
   }
 }

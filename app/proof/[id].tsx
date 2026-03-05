@@ -19,6 +19,7 @@ import { OrbTapLogoMark } from '../../components/OrbTapLogoMark';
 import { ShareToSocialSheet } from '../../components/ShareToSocialSheet';
 import { proofSharePayload } from '../../utils/shareToSocial';
 import QRCode from 'react-native-qrcode-svg';
+import { useI18n } from '../../context/I18nContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const STORY_W = Math.min(SCREEN_W - 48, 360);
@@ -47,6 +48,7 @@ function formatTimestamp(createdAt: string): string {
 }
 
 export default function ProofScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors } = useTheme();
   const { flags } = useFlags();
@@ -152,7 +154,7 @@ export default function ProofScreen() {
           <View style={[styles.tierBar, { backgroundColor: tierColor }]} />
           <View style={styles.cardHeader}>
             <View style={styles.verifiedBadge}>
-              <Ionicons name="shield-checkmark" size={22} color="#22C55E" />
+              <Ionicons name="shield-checkmark" size={22} color={colors.success} />
               <Text style={styles.headerTitle}>VERIFIED</Text>
               {isStampCardProof && (
                 <View style={[styles.tierPill, { backgroundColor: 'rgba(13,148,136,0.3)', borderColor: '#0d9488', marginLeft: 8 }]}>
@@ -204,9 +206,9 @@ export default function ProofScreen() {
                 <Text style={styles.storyAppName}>OrbTap</Text>
                 <Text style={styles.storyAppSub}>Tap. Earn. Flex.</Text>
               </View>
-              <View style={[styles.storyVerifiedBadge, { borderColor: '#22C55E' + '55', backgroundColor: '#22C55E' + '15' }]}>
-                <Ionicons name="shield-checkmark" size={14} color="#22C55E" />
-                <Text style={styles.storyVerifiedText}>VERIFIED</Text>
+              <View style={[styles.storyVerifiedBadge, { borderColor: colors.success + '55', backgroundColor: colors.success + '15' }]}>
+                <Ionicons name="shield-checkmark" size={14} color={colors.success} />
+                <Text style={[styles.storyVerifiedText, { color: colors.success }]}>VERIFIED</Text>
               </View>
             </View>
             <View style={styles.storyBody}>
@@ -233,7 +235,7 @@ export default function ProofScreen() {
         </ViewShot>
       )}
 
-      <TouchableOpacity style={[styles.shareBtn, { backgroundColor: '#22C55E' }]} onPress={handleShare} activeOpacity={0.8}>
+      <TouchableOpacity style={[styles.shareBtn, { backgroundColor: colors.success }]} onPress={handleShare} activeOpacity={0.8}>
         <Ionicons name="share-social" size={22} color="#000" />
         <Text style={styles.shareBtnText}>Share Proof</Text>
       </TouchableOpacity>
@@ -387,7 +389,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  storyVerifiedText: { color: '#22C55E', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  storyVerifiedText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   storyBody: { alignItems: 'flex-start', gap: 6 },
   storyVisitedLabel: { color: 'rgba(255,255,255,0.5)', fontSize: 16, fontWeight: '500' },
   storyPartnerName: { color: '#FFF', fontSize: 36, fontWeight: '900', lineHeight: 40 },

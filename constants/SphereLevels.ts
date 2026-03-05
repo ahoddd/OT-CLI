@@ -17,7 +17,7 @@ export const SPHERE_TIERS: SphereTier[] = [
   { level: 2, title: 'Crew', xpRequired: 500, perk: 'Group visit bonus: +5% OT when 2+ members visit same partner in 24h', perkShort: 'Group bonus', nextTeaser: 'Group visit bonus' },
   { level: 3, title: 'Squad Silver', xpRequired: 1500, perk: 'Sphere leaderboard badge + 1.05× pool redemption value', perkShort: 'Silver badge', nextTeaser: 'Leaderboard badge' },
   { level: 4, title: 'Squad Gold', xpRequired: 3500, perk: 'Partner “Sphere perk” unlocks: exclusive offers for your sphere', perkShort: 'Sphere perks', nextTeaser: 'Partner sphere perks' },
-  { level: 5, title: 'Squad Elite', xpRequired: 7000, perk: 'Priority support + 1.1× pool value', perkShort: 'Elite perks', nextTeaser: '1.1× pool value' },
+  { level: 5, title: 'Squad Apex', xpRequired: 7000, perk: 'Priority support + 1.1× pool value', perkShort: 'Apex perks', nextTeaser: '1.1× pool value' },
   { level: 6, title: 'Orb Legion', xpRequired: 12000, perk: 'Top sphere leaderboard flair + exclusive Legion title', perkShort: 'Legion title', nextTeaser: 'Legion title' },
 ];
 

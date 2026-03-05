@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -41,25 +42,30 @@ import { PARTNER_TIER_COLORS, PLATINUM_GRADIENT } from '../constants/PartnerTier
 import { PremiumBadge } from '../components/PremiumBadge';
 import { PartnerProBadge } from '../components/PartnerProBadge';
 import { safeHaptics, Haptics } from '../utils/safeHaptics';
-import {
-  BILLING_PORTAL_URL,
-  STRIPE_PREMIUM_MONTHLY_LINK,
-  STRIPE_PREMIUM_YEARLY_LINK,
-  STRIPE_PRO_MONTHLY_LINK,
-  STRIPE_PRO_YEARLY_LINK,
-  STRIPE_PARTNER_PREMIUM_MONTHLY_LINK,
-  STRIPE_PARTNER_PREMIUM_YEARLY_LINK,
-  STRIPE_PARTNER_PRO_MONTHLY_LINK,
-  STRIPE_PARTNER_PRO_YEARLY_LINK,
-} from '../constants/AppLinks';
+import { BILLING_PORTAL_URL } from '../constants/AppLinks';
 import * as Linking from 'expo-linking';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app as firebaseApp } from '../firebaseConfig';
+import { showErrorAlert } from '../utils/alert';
 import { logPremiumView } from '../services/analytics';
 import { getGlobalStats, formatStatCount } from '../services/globalStats';
+import { useI18n } from '../context/I18nContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PLAT = PARTNER_TIER_COLORS.platinum;
 const GOLD = PARTNER_TIER_COLORS.gold;
 const TAB_BAR_CLEARANCE = Platform.OS === 'ios' ? 100 : 80;
+
+const STRIPE_PRICE_IDS = {
+  user: {
+    premium: { monthly: process.env.EXPO_PUBLIC_STRIPE_PRICE_USER_PREMIUM_MONTHLY ?? 'price_user_premium_monthly', yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_USER_PREMIUM_YEARLY ?? 'price_user_premium_yearly' },
+    pro: { monthly: process.env.EXPO_PUBLIC_STRIPE_PRICE_USER_PRO_MONTHLY ?? 'price_user_pro_monthly', yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_USER_PRO_YEARLY ?? 'price_user_pro_yearly' },
+  },
+  partner: {
+    premium: { monthly: process.env.EXPO_PUBLIC_STRIPE_PRICE_PARTNER_PREMIUM_MONTHLY ?? 'price_partner_premium_monthly', yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_PARTNER_PREMIUM_YEARLY ?? 'price_partner_premium_yearly' },
+    pro: { monthly: process.env.EXPO_PUBLIC_STRIPE_PRICE_PARTNER_PRO_MONTHLY ?? 'price_partner_pro_monthly', yearly: process.env.EXPO_PUBLIC_STRIPE_PRICE_PARTNER_PRO_YEARLY ?? 'price_partner_pro_yearly' },
+  },
+};
 
 type TierTab = 'free' | 'premium' | 'pro';
 
@@ -712,6 +718,7 @@ const roiStyles = StyleSheet.create({
 /* ─────────── MAIN SCREEN ─────────── */
 
 export default function PremiumScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const params = useLocalSearchParams<{ tier?: string }>();
   const { user } = useAuth();
@@ -727,6 +734,7 @@ export default function PremiumScreen() {
   const [tierTab, setTierTab] = useState<TierTab>(initialTab);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
   const [showComparison, setShowComparison] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
   const [globalStats, setGlobalStats] = useState<{ userCount: number; partnerCount: number; totalRedemptions: number } | null>(null);
 
   useEffect(() => {
@@ -767,19 +775,37 @@ export default function PremiumScreen() {
 
   const alreadyHasTier = user && ((tierTab === 'premium' && isPremium) || (tierTab === 'pro' && isPro));
 
-  const getStripeLink = () => {
-    if (tierTab === 'premium') {
-      if (isPartner) return billingCycle === 'yearly' ? STRIPE_PARTNER_PREMIUM_YEARLY_LINK : STRIPE_PARTNER_PREMIUM_MONTHLY_LINK;
-      return billingCycle === 'yearly' ? STRIPE_PREMIUM_YEARLY_LINK : STRIPE_PREMIUM_MONTHLY_LINK;
-    }
-    if (isPartner) return billingCycle === 'yearly' ? STRIPE_PARTNER_PRO_YEARLY_LINK : STRIPE_PARTNER_PRO_MONTHLY_LINK;
-    return billingCycle === 'yearly' ? STRIPE_PRO_YEARLY_LINK : STRIPE_PRO_MONTHLY_LINK;
+  const getPriceId = (): string => {
+    const cycle = billingCycle as 'monthly' | 'yearly';
+    const accountType = isPartner ? 'partner' : 'user';
+    const tierKey = tierTab as 'premium' | 'pro';
+    return STRIPE_PRICE_IDS[accountType][tierKey][cycle];
   };
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
+    if (purchasing) return;
     safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const stripeUrl = getStripeLink();
-    Linking.openURL(stripeUrl);
+    setPurchasing(true);
+    try {
+      const fns = getFunctions(firebaseApp);
+      const createSession = httpsCallable<
+        { priceId: string; successUrl: string; cancelUrl: string },
+        { sessionId: string; url: string }
+      >(fns, 'createCheckoutSession');
+      const result = await createSession({
+        priceId: getPriceId(),
+        successUrl: 'https://orbtap.com/premium?success=1',
+        cancelUrl: 'https://orbtap.com/premium?cancel=1',
+      });
+      if (result.data.url) {
+        await Linking.openURL(result.data.url);
+      }
+    } catch (err) {
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showErrorAlert('Checkout unavailable', 'Please try again or contact support@orbtap.com');
+    } finally {
+      setPurchasing(false);
+    }
   };
 
   return (
@@ -972,7 +998,16 @@ export default function PremiumScreen() {
             <>
               <TouchableOpacity
                 style={[styles.manageBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                onPress={() => Linking.openURL(BILLING_PORTAL_URL)}
+                onPress={async () => {
+                  try {
+                    const fns = getFunctions(firebaseApp);
+                    const portal = httpsCallable<{ returnUrl: string }, { url: string }>(fns, 'createBillingPortal');
+                    const result = await portal({ returnUrl: 'https://orbtap.com/premium' });
+                    if (result.data.url) await Linking.openURL(result.data.url);
+                  } catch {
+                    Linking.openURL(BILLING_PORTAL_URL);
+                  }
+                }}
               >
                 <Ionicons name="card" size={18} color={accent} />
                 <Text style={[styles.manageBtnText, { color: colors.text }]}>Manage subscription</Text>
@@ -1013,17 +1048,26 @@ export default function PremiumScreen() {
             <>
               <PulseGlow color={tierTab === 'pro' ? PLAT : GOLD} style={styles.ctaGlowWrap}>
                 <ShimmerCta>
-                  <TouchableOpacity style={styles.ctaPrimary} onPress={handleUpgrade} activeOpacity={0.9}>
+                  <TouchableOpacity style={[styles.ctaPrimary, purchasing && { opacity: 0.7 }]} onPress={handleUpgrade} disabled={purchasing} activeOpacity={0.9}>
                     <LinearGradient
                       colors={tierTab === 'pro' ? [PLAT, PLATINUM_GRADIENT.inner] : [GOLD, '#b8860b']}
                       style={styles.ctaGrad}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Ionicons name={tierTab === 'pro' ? 'star' : 'diamond'} size={18} color={tierTab === 'pro' ? '#fff' : '#000'} />
-                      <Text style={[styles.ctaPrimaryText, tierTab === 'pro' && { color: '#fff' }]}>
-                        {tierTab === 'pro' ? 'Join Pro' : 'Start 7-day free trial'} — {tierTab === 'premium' ? 'then ' : ''}{formatPrice(activePrice, activePeriod)}
-                      </Text>
+                      {purchasing ? (
+                        <>
+                          <ActivityIndicator color={tierTab === 'pro' ? '#fff' : '#000'} size="small" />
+                          <Text style={[styles.ctaPrimaryText, tierTab === 'pro' && { color: '#fff' }]}>Processing...</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name={tierTab === 'pro' ? 'star' : 'diamond'} size={18} color={tierTab === 'pro' ? '#fff' : '#000'} />
+                          <Text style={[styles.ctaPrimaryText, tierTab === 'pro' && { color: '#fff' }]}>
+                            {tierTab === 'pro' ? 'Join Pro' : 'Start 7-day free trial'} — {tierTab === 'premium' ? 'then ' : ''}{formatPrice(activePrice, activePeriod)}
+                          </Text>
+                        </>
+                      )}
                     </LinearGradient>
                   </TouchableOpacity>
                 </ShimmerCta>

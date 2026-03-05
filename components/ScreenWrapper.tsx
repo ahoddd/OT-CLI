@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useTheme } from '../hooks/useTheme';
+import { SPACE } from '../constants/DesignTokens';
 
-interface ScreenWrapperProps {
+export interface ScreenWrapperProps {
   children: React.ReactNode;
   style?: ViewStyle;
   title?: string;
@@ -11,14 +13,15 @@ interface ScreenWrapperProps {
   headerRight?: React.ReactNode;
 }
 
-export function ScreenWrapper({ children, style, title, headerLeft, headerRight }: ScreenWrapperProps) {
+function ScreenWrapperInner({ children, style, title, headerLeft, headerRight }: ScreenWrapperProps) {
+  const { colors, isDark } = useTheme();
   return (
-    <SafeAreaView style={[styles.container, style]} edges={['top']}>
-      <StatusBar style="light" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }, style]} edges={['top']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       {title != null ? (
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           {headerLeft ?? null}
-          <Text style={styles.headerTitle}>{title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{title}</Text>
           {headerRight ?? null}
         </View>
       ) : null}
@@ -27,25 +30,25 @@ export function ScreenWrapper({ children, style, title, headerLeft, headerRight 
   );
 }
 
+export const ScreenWrapper = memo(ScreenWrapperInner);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: SPACE.base,
+    paddingVertical: SPACE.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
-    gap: 12,
+    gap: SPACE.md,
+    minHeight: 56,
   },
   headerTitle: {
     flex: 1,
-    color: '#FFF',
     fontSize: 18,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 });

@@ -41,6 +41,11 @@ import { safeHaptics, Haptics } from '../../utils/safeHaptics';
 import { PARTNER_TIER_COLORS } from '../../constants/PartnerTiers';
 import type { PartnerTier } from '../../constants/PartnerTiers';
 import { showRatingPromptIfDelight } from '../../utils/delightRatingPrompt';
+import { useI18n } from '../../context/I18nContext';
+import { logScanVerified, logProofShared } from '../../services/analytics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const FIRST_SCAN_KEY = 'ORBTAP_FIRST_SCAN_SHARED';
 
 // Animated integer counter hook
 function useCountUp(target: number, durationMs = 1200, delayMs = 300) {
@@ -52,6 +57,7 @@ function useCountUp(target: number, durationMs = 1200, delayMs = 300) {
 }
 
 export default function ScanSuccessScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];
@@ -64,6 +70,9 @@ export default function ScanSuccessScreen() {
   const [inviteSheetVisible, setInviteSheetVisible] = useState(false);
   const [invitePayload, setInvitePayload] = useState<{ message: string; url?: string; title?: string } | null>(null);
   const [showReferral, setShowReferral] = useState(false);
+  // VM1 — First-scan mandatory share sheet
+  const [firstScanShareVisible, setFirstScanShareVisible] = useState(false);
+  const [firstScanPayload, setFirstScanPayload] = useState<{ message: string; url?: string; title?: string } | null>(null);
   const { user } = useAuth();
   const prefs = usePreferences();
   const { flags } = useFlags();
@@ -108,6 +117,27 @@ export default function ScanSuccessScreen() {
   useEffect(() => {
     const t = setTimeout(() => showRatingPromptIfDelight('first_scan'), 3500);
     return () => clearTimeout(t);
+  }, []);
+
+  // Log scan_verified analytics event
+  useEffect(() => {
+    if (points > 0 && partnerId) {
+      logScanVerified({ partner_id: partnerId, points, tier, is_first_scan: false });
+    }
+  }, []);
+
+  // VM1 — First-scan share sheet: shows automatically on the user's very first verified visit.
+  useEffect(() => {
+    (async () => {
+      const alreadyShared = await AsyncStorage.getItem(FIRST_SCAN_KEY);
+      if (!alreadyShared && partner && points > 0) {
+        await AsyncStorage.setItem(FIRST_SCAN_KEY, '1');
+        const msg = `Just got my first verified visit at ${partner} on OrbTap — earned ${points} OT Points 🔮 Download the app: https://orbtap.com`;
+        setFirstScanPayload({ message: msg, title: 'Share your first win!', url: 'https://orbtap.com' });
+        // Delay so celebration animations play first
+        setTimeout(() => setFirstScanShareVisible(true), 2500);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -314,7 +344,10 @@ export default function ScanSuccessScreen() {
           {proofId ? (
             <TouchableOpacity
               style={[styles.btnPrimary, { backgroundColor: tierColor }]}
-              onPress={openProofCard}
+              onPress={() => {
+                if (proofId) logProofShared({ proof_id: proofId, partner_id: partnerId || undefined, channel: 'scan_success' });
+                openProofCard();
+              }}
               activeOpacity={0.88}
             >
               <Ionicons name="share-social" size={20} color="#000" />
@@ -389,6 +422,15 @@ export default function ScanSuccessScreen() {
           onClose={() => { setInviteSheetVisible(false); setInvitePayload(null); }}
           payload={invitePayload}
           label="Invite friends"
+        />
+      )}
+      {/* VM1 — First-scan mandatory share sheet */}
+      {firstScanPayload && (
+        <ShareToSocialSheet
+          visible={firstScanShareVisible}
+          onClose={() => setFirstScanShareVisible(false)}
+          payload={firstScanPayload}
+          label="Share your first win!"
         />
       )}
     </SafeAreaView>

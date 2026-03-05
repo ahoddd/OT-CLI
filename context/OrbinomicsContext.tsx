@@ -42,7 +42,7 @@ export function OrbinomicsProvider({ children }: { children: React.ReactNode }) 
           }));
         }
       } catch (e) {
-        console.warn('Orbinomics load error:', e);
+        if (__DEV__) console.warn('Orbinomics load error:', e);
       } finally {
         setLoading(false);
       }
@@ -53,7 +53,7 @@ export function OrbinomicsProvider({ children }: { children: React.ReactNode }) 
     try {
       await AsyncStorage.setItem(ORBINOMICS_STORAGE_KEY, JSON.stringify(next));
     } catch (e) {
-      console.warn('Orbinomics persist error:', e);
+      if (__DEV__) console.warn('Orbinomics persist error:', e);
     }
   }, []);
 

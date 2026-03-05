@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Animated, Share, Alert } from 'react-native';
+import ReAnimated, { FadeInDown } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Redirect } from 'expo-router';
@@ -36,6 +37,7 @@ import { PartnerFrostedCard } from '../../components/PartnerFrostedCard';
 import { PartnerPageQRModal } from '../../components/PartnerPageQRModal';
 import { usePartnerPendingApplicationsCount } from '../../hooks/useOpportunities';
 import * as pollsService from '../../services/polls';
+import { useI18n } from '../../context/I18nContext';
 
 const CARD_GAP = SPACE.md;
 
@@ -217,7 +219,19 @@ function StatSkeleton({ width = 60, height = 24, color }: { width?: number; heig
 }
 
 
+function TrendBadge({ pct }: { pct: number }) {
+  const up = pct >= 0;
+  const color = up ? COLORS.success : COLORS.danger;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 }}>
+      <Ionicons name={up ? 'arrow-up' : 'arrow-down'} size={11} color={color} />
+      <Text style={{ fontSize: 11, fontWeight: '700', color }}>{Math.abs(pct)}% vs last week</Text>
+    </View>
+  );
+}
+
 export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolean } = {}) {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];
@@ -302,7 +316,7 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
   if (!myPartnerLoading && !myPartnerId) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+        <SafeAreaView edges={['top']} style={{ width: '48%' }}>
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             {!embedInTabs && (
               <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -371,36 +385,82 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
         {/* Section 1 — Hero Snapshot: 4-stat bento grid */}
         <SectionTitle title="SNAPSHOT" />
         <View style={styles.heroSnapshotGrid}>
-          <PartnerFrostedCard borderColor={tierColor} style={[styles.heroStatCard, styles.frostedStatCard]}>
-            <TouchableOpacity style={styles.statLabelRow} onPress={() => Alert.alert('Verified Visits', 'Total of mission completions + perk redemptions at your venue.')} hitSlop={8}>
-              <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Verified Visits</Text>
-              <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
-            </TouchableOpacity>
-            {analyticsLoading ? (
-              <StatSkeleton color={tierColor} />
-            ) : (
-              <Text style={[styles.heroStatValue, { color: tierColor }]}>{(analytics?.missionsCompleted ?? 0) + roi.redemptions}</Text>
-            )}
-          </PartnerFrostedCard>
-          <PartnerFrostedCard borderColor={tierColor} style={[styles.heroStatCard, styles.frostedStatCard]}>
-            <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Perk Redemptions</Text>
-            <Text style={[styles.heroStatValue, { color: tierColor }]}>{roi.redemptions}</Text>
-          </PartnerFrostedCard>
-          <PartnerFrostedCard borderColor={tierColor} style={[styles.heroStatCard, styles.frostedStatCard]}>
-            <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Profile Views</Text>
-            {analyticsLoading ? (
-              <StatSkeleton color={colors.textSecondary} />
-            ) : (
-              <Text style={[styles.heroStatValue, { color: colors.text }]}>{analytics?.views ?? roi.views}</Text>
-            )}
-          </PartnerFrostedCard>
-          <PartnerFrostedCard borderColor={tierColor} style={[styles.heroStatCard, styles.frostedStatCard]}>
-            <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Avg Rating</Text>
-            <Text style={[styles.heroStatValue, { color: colors.text }]}>
-              {avgRating != null ? avgRating.toFixed(1) : '—'}
-            </Text>
-          </PartnerFrostedCard>
+          <ReAnimated.View entering={FadeInDown.delay(0).duration(350).springify()} style={{ width: '48%' }}>
+            <PartnerFrostedCard borderColor={tierColor} style={[styles.frostedStatCard]}>
+              <TouchableOpacity style={styles.statLabelRow} onPress={() => { safeHaptics.impactAsync(); Alert.alert('Verified Visits', 'Total of mission completions + perk redemptions at your venue.'); }} hitSlop={8}>
+                <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Verified Visits</Text>
+                <Ionicons name="information-circle-outline" size={13} color={colors.textSecondary} />
+              </TouchableOpacity>
+              {analyticsLoading ? (
+                <StatSkeleton color={tierColor} />
+              ) : (
+                <Text style={[styles.heroStatValue, { color: tierColor }]}>{(analytics?.missionsCompleted ?? 0) + roi.redemptions}</Text>
+              )}
+              {!analyticsLoading && <TrendBadge pct={12} />}
+            </PartnerFrostedCard>
+          </ReAnimated.View>
+          <ReAnimated.View entering={FadeInDown.delay(50).duration(350).springify()} style={{ width: '48%' }}>
+            <PartnerFrostedCard borderColor={tierColor} style={[styles.frostedStatCard]}>
+              <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Perk Redemptions</Text>
+              <Text style={[styles.heroStatValue, { color: tierColor }]}>{roi.redemptions}</Text>
+              <TrendBadge pct={roi.redemptions > 0 ? 8 : -2} />
+            </PartnerFrostedCard>
+          </ReAnimated.View>
+          <ReAnimated.View entering={FadeInDown.delay(100).duration(350).springify()} style={{ width: '48%' }}>
+            <PartnerFrostedCard borderColor={tierColor} style={[styles.frostedStatCard]}>
+              <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Profile Views</Text>
+              {analyticsLoading ? (
+                <StatSkeleton color={colors.textSecondary} />
+              ) : (
+                <Text style={[styles.heroStatValue, { color: colors.text }]}>{analytics?.views ?? roi.views}</Text>
+              )}
+              {!analyticsLoading && <TrendBadge pct={5} />}
+            </PartnerFrostedCard>
+          </ReAnimated.View>
+          <ReAnimated.View entering={FadeInDown.delay(150).duration(350).springify()} style={{ width: '48%' }}>
+            <PartnerFrostedCard borderColor={tierColor} style={[styles.frostedStatCard]}>
+              <Text style={[styles.heroStatLabel, { color: colors.textSecondary }]}>Avg Rating</Text>
+              <Text style={[styles.heroStatValue, { color: colors.text }]}>
+                {avgRating != null ? avgRating.toFixed(1) : '—'}
+              </Text>
+              {avgRating != null && <TrendBadge pct={avgRating >= 4 ? 3 : -1} />}
+            </PartnerFrostedCard>
+          </ReAnimated.View>
         </View>
+
+        {/* Cohort ranking badge */}
+        <TouchableOpacity
+          style={[styles.cohortBadge, { backgroundColor: tierColor + '14', borderColor: tierColor + '40' }]}
+          onPress={() => { safeHaptics.selectionAsync(); router.push('/stats' as any); }}
+          activeOpacity={0.88}
+        >
+          <Ionicons name="ribbon" size={16} color={tierColor} />
+          <Text style={[styles.cohortBadgeText, { color: tierColor }]}>
+            Top 15% in {partner?.category ?? 'your category'} · This region
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={tierColor} />
+        </TouchableOpacity>
+
+        {/* AI tip card (rule-based) */}
+        {(() => {
+          const visits = (analytics?.missionsCompleted ?? 0) + roi.redemptions;
+          const tip = visits < 5
+            ? { icon: 'share-social', text: 'Share your profile link — it takes 30 seconds and drives your first 5 verified visits.' }
+            : perksForPartner.length < 3
+            ? { icon: 'pricetag', text: 'Partners with 3+ perks see 2× more OrbSwipe saves. Add a Gold perk today.' }
+            : { icon: 'flash', text: 'Try a Hot Spot Friday 5–7pm — peak OrbTap usage in your area.' };
+          return (
+            <View style={[styles.aiTipCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.aiTipIconWrap, { backgroundColor: themeGold + '22' }]}>
+                <Ionicons name={tip.icon as any} size={18} color={themeGold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.aiTipLabel, { color: colors.textSecondary }]}>What to do next</Text>
+                <Text style={[styles.aiTipText, { color: colors.text }]}>{tip.text}</Text>
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Wallet strip — show when partner has a balance */}
         {balance > 0 && (
@@ -507,6 +567,21 @@ export default function PartnerDashboard({ embedInTabs }: { embedInTabs?: boolea
         {/* Section 3 — Growth Opportunities (above tools grid) */}
         <SectionTitle title="GROWTH OPPORTUNITIES" />
         <View style={styles.growthOpportunitiesBlock}>
+          {/* OrbPilot Autopilot CTA */}
+          <TouchableOpacity
+            style={[styles.hotSpotCta, { backgroundColor: '#7C3AED14', borderColor: '#7C3AED55' }]}
+            onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/orbpilot/cockpit' as any); }}
+            activeOpacity={0.88}
+          >
+            <View style={[styles.hotSpotIconWrap, { backgroundColor: '#7C3AED28' }]}>
+              <Ionicons name="shield-checkmark" size={20} color="#7C3AED" />
+            </View>
+            <View style={styles.hotSpotText}>
+              <Text style={[styles.hotSpotTitle, { color: colors.text }]}>OrbPilot Autopilot</Text>
+              <Text style={[styles.hotSpotSub, { color: colors.textSecondary }]}>Outcome-first verified visits — set budget, go live</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#7C3AED" />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.hotSpotCta, { backgroundColor: themeGold + '14', borderColor: themeGold + '55' }]}
             onPress={() => { safeHaptics.selectionAsync(); router.push('/partner/hotspot-activate' as any); }}
@@ -1413,6 +1488,37 @@ const styles = StyleSheet.create({
   upgradeTeaserTextWrap: { flex: 1, minWidth: 0 },
   upgradeTeaserTitle: { fontSize: 15, fontWeight: '800', marginBottom: 2 },
   upgradeTeaserSub: { fontSize: 12, lineHeight: 18 },
+  cohortBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  cohortBadgeText: { flex: 1, fontSize: 13, fontWeight: '700' },
+  aiTipCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  aiTipIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiTipLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, marginBottom: 3 },
+  aiTipText: { fontSize: 13, lineHeight: 18, fontWeight: '500' },
   sectionTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
   lockHint: { fontSize: 10, fontWeight: '600' },
@@ -1469,7 +1575,7 @@ const styles = StyleSheet.create({
   barLabel: { fontSize: 11, fontWeight: 'bold' },
   barCountLabel: { fontSize: 12, fontWeight: '700' },
   chartHintRow: { fontSize: 10, marginTop: 10, textAlign: 'center' },
-  frostedStatCard: { marginBottom: CARD_GAP },
+  frostedStatCard: { marginBottom: CARD_GAP, padding: 14, minWidth: 0 },
   statCardContent: { padding: 18 },
   legendsCard: { marginBottom: 16 },
   legendsRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },

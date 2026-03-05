@@ -12,8 +12,10 @@ import { partnerReferralUrl } from '../../constants/AppLinks';
 import { COLORS } from '../../constants/Colors';
 import { safeHaptics } from '../../utils/safeHaptics';
 import * as Clipboard from 'expo-clipboard';
+import { useI18n } from '../../context/I18nContext';
 
 export default function PartnerReferralScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors } = useTheme();
   const { myPartnerId, myPartner } = useMyPartner();

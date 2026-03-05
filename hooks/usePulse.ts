@@ -6,9 +6,11 @@
 import { useMemo } from 'react';
 import { useWalletContext } from '../context/WalletContext';
 import { useDrops } from './useDrops';
+import { useMenuContext } from '../context/MenuContext';
+import { useFlags } from '../components/FlagContext';
 import { scoreFromAction, type PulsePartnerRow } from '../constants/PulseScore';
-import { MOCK_PARTNERS } from '../constants/MockData';
 import type { Drop } from '../constants/Drops';
+import { usePartners } from '../context/PartnersContext';
 
 const NOW = Date.now();
 const NOW_WINDOW_MS = 60 * 60 * 1000;
@@ -16,18 +18,8 @@ const TODAY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const TOP_N = 10;
 
-function getPartnerName(partnerId: string): string {
-  const p = MOCK_PARTNERS.find((x) => x.id === partnerId);
-  return p?.name ?? partnerId;
-}
-
-function getPartnerCategory(partnerId: string): string {
-  const p = MOCK_PARTNERS.find((x) => x.id === partnerId);
-  return p?.category ?? 'explore';
-}
-
 export interface PulseTile {
-  type: 'partner' | 'drop';
+  type: 'partner' | 'drop' | 'poll';
   id: string;
   title: string;
   category: string;
@@ -37,10 +29,14 @@ export interface PulseTile {
   /** For drop: qty remaining + timer. */
   qtyRemaining?: number;
   endAt?: number;
-  /** CTA: reserve_drop | start_quest | navigate | redeem | view */
+  /** True when drop ends within 2h (Tonight / Final Hours). */
+  finalHours?: boolean;
+  /** CTA: reserve_drop | start_quest | navigate | redeem | view | vote */
   primaryCta: string;
   score: number;
   drop?: Drop;
+  /** For poll: pollId for deep link. */
+  pollId?: string;
 }
 
 export interface UsePulseResult {
@@ -58,6 +54,9 @@ export interface UsePulseResult {
 export function usePulse(): UsePulseResult {
   const { verifiedActions } = useWalletContext();
   const { drops, loading: dropsLoading, refresh: refreshDrops } = useDrops();
+  const { documents, getCurrentVersion } = useMenuContext();
+  const { flags } = useFlags();
+  const { getPartner } = usePartners();
 
   const now = Date.now();
   const oneHourAgo = now - NOW_WINDOW_MS;
@@ -65,6 +64,8 @@ export function usePulse(): UsePulseResult {
   const sevenDaysAgo = now - SEVEN_DAYS_MS;
 
   const { trendingPartnersNow, newDiscoveries, tonightPicksPartners } = useMemo(() => {
+    const getPartnerName = (partnerId: string) => getPartner(partnerId)?.name ?? partnerId;
+    const getPartnerCategory = (partnerId: string) => getPartner(partnerId)?.category ?? 'explore';
     const actionsIn24h = verifiedActions.filter((a) => a.createdAt >= twentyFourHoursAgo);
     const actionsIn1h = actionsIn24h.filter((a) => a.createdAt >= oneHourAgo);
     const actionsIn7d = verifiedActions.filter((a) => a.createdAt >= sevenDaysAgo);
@@ -72,7 +73,7 @@ export function usePulse(): UsePulseResult {
     const partnerScores = new Map<string, { score: number; count: number; lastAt: number }>();
     for (const a of actionsIn1h) {
       const minutesAgo = (now - a.createdAt) / (60 * 1000);
-      const add = scoreFromAction(a.pointsAwarded, minutesAgo, 'REDEEM');
+      const add = scoreFromAction(a.pointsAwarded, minutesAgo, a.actionType ?? 'REDEEM');
       const cur = partnerScores.get(a.partnerId) ?? { score: 0, count: 0, lastAt: 0 };
       partnerScores.set(a.partnerId, {
         score: cur.score + add,
@@ -133,7 +134,7 @@ export function usePulse(): UsePulseResult {
       newDiscoveries,
       tonightPicksPartners,
     };
-  }, [verifiedActions, now, oneHourAgo, twentyFourHoursAgo, sevenDaysAgo]);
+  }, [verifiedActions, now, oneHourAgo, twentyFourHoursAgo, sevenDaysAgo, getPartner]);
 
   const trendingDropsNow = useMemo(() => {
     return drops
@@ -156,17 +157,20 @@ export function usePulse(): UsePulseResult {
         score: p.score,
       });
     }
+    const twoHoursMs = 2 * 60 * 60 * 1000;
     for (const d of trendingDropsNow.slice(0, 2)) {
       const minLeft = Math.max(0, Math.floor((d.endAt - now) / 60000));
+      const finalHours = d.endAt - now < twoHoursMs;
       tiles.push({
         type: 'drop',
         id: `drop_${d.id}`,
         title: d.title,
         category: d.category,
-        whyTrending: `${d.qtyTotal - d.qtyRemaining} reserved • ${minLeft}m left`,
+        whyTrending: finalHours ? `Final hours • ${minLeft}m left` : `${d.qtyTotal - d.qtyRemaining} reserved • ${minLeft}m left`,
         entityId: d.id,
         qtyRemaining: d.qtyRemaining,
         endAt: d.endAt,
+        finalHours,
         primaryCta: 'reserve_drop',
         score: d.qtyTotal - d.qtyRemaining,
         drop: d,
@@ -188,24 +192,50 @@ export function usePulse(): UsePulseResult {
       primaryCta: 'redeem',
       score: p.score,
     }));
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
     const fromDrops: PulseTile[] = trendingDropsNow.slice(0, 3).map((d) => {
       const minLeft = Math.max(0, Math.floor((d.endAt - now) / 60000));
+      const finalHours = d.endAt - now < TWO_HOURS_MS;
       return {
         type: 'drop' as const,
         id: `tonight_drop_${d.id}`,
         title: d.title,
         category: d.category,
-        whyTrending: `${d.qtyRemaining} left • ${minLeft}m`,
+        whyTrending: finalHours ? `Final hours • ${d.qtyRemaining} left • ${minLeft}m` : `${d.qtyRemaining} left • ${minLeft}m`,
         entityId: d.id,
         qtyRemaining: d.qtyRemaining,
         endAt: d.endAt,
+        finalHours,
         primaryCta: 'reserve_drop' as const,
         score: d.qtyRemaining,
         drop: d,
       };
     });
-    return ([...fromPartners, ...fromDrops].sort((a, b) => b.score - a.score).slice(0, 6) as PulseTile[]);
-  }, [tonightPicksPartners, trendingDropsNow, now]);
+    const getPartnerName = (partnerId: string) => getPartner(partnerId)?.name ?? partnerId;
+    const getPartnerCategory = (partnerId: string) => getPartner(partnerId)?.category ?? 'explore';
+    const fromMenuTonight: PulseTile[] = flags.partnerMenusTonightPicks
+      ? documents
+          .filter((d) => d.status === 'PUBLISHED')
+          .flatMap((d) => {
+            const ver = getCurrentVersion(d);
+            if (!ver) return [];
+            return ver.sections.flatMap((s) =>
+              s.items.filter((i) => i.featuredTonight && i.available).map((i) => ({
+                type: 'partner' as const,
+                id: `tonight_menu_${d.partnerId}_${i.id}`,
+                title: `${i.name} at ${getPartnerName(d.partnerId)}`,
+                category: getPartnerCategory(d.partnerId),
+                whyTrending: 'Tonight Pick',
+                entityId: d.partnerId,
+                primaryCta: 'navigate' as const,
+                score: 1,
+              }))
+            );
+          })
+          .slice(0, 4)
+      : [];
+    return ([...fromMenuTonight, ...fromPartners, ...fromDrops].sort((a, b) => b.score - a.score).slice(0, 6) as PulseTile[]);
+  }, [tonightPicksPartners, trendingDropsNow, now, documents, flags.partnerMenusTonightPicks, getCurrentVersion, getPartner]);
 
   return {
     liveTiles,

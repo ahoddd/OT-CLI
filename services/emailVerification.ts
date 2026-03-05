@@ -1,89 +1,76 @@
 /**
- * OrbTap Email Verification — Verify-Before-Create anti-bot strategy.
- * No account is created until the user proves they control the email (6-digit code).
- * Rate limiting and one-time codes make bulk signups and bots impractical.
+ * OrbTap Email Verification — Firebase built-in flow.
+ * User signs up with email/password; we send Firebase's verification link.
+ * User verifies by clicking the link (Firebase Console → Authentication → Templates).
  */
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { createUserWithEmailAndPassword, updateProfile, signInWithCustomToken as firebaseSignInWithCustomToken } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  sendEmailVerification,
+  User,
+} from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 
-const DEV_BYPASS_CODE = '123456';
+export type BirthDate = { year: number; month: number; day: number };
 
-export type RequestCodeResult = { success: true } | { success: false; message: string };
-export type VerifyCodeResult =
-  | { success: true; customToken: string }
+export type SignUpResult =
+  | { success: true; user: User }
   | { success: false; message: string };
 
 /**
- * Request a 6-digit verification code to be sent to the email.
- * Production: Cloud Function generates code, stores it with short expiry, sends email.
- * Dev: No email sent; use code 123456 to proceed (bypass for testing).
+ * Create account and send Firebase's verification email (link).
+ * Call initializeUserProfile (Cloud Function) after this to create the user doc and founding stats.
  */
-export async function requestVerificationCode(
+export async function signUpWithEmailAndSendVerification(
   email: string,
   password: string,
-  displayName: string
-): Promise<RequestCodeResult> {
-  if (__DEV__) {
-    // Dev bypass: no CF call; code "123456" will be accepted in verifyAndCreateUser.
-    return { success: true };
+  displayName: string,
+  birthDate?: BirthDate
+): Promise<SignUpResult> {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    await updateProfile(user, { displayName: displayName || email.split('@')[0] });
+    await sendEmailVerification(user);
+    return { success: true, user };
+  } catch (e: any) {
+    const code = e?.code;
+    if (code === 'auth/email-already-in-use') {
+      return { success: false, message: 'This email is already registered. Sign in instead.' };
+    }
+    if (code === 'auth/weak-password') {
+      return { success: false, message: 'Use a stronger password (at least 6 characters).' };
+    }
+    if (code === 'auth/invalid-email') {
+      return { success: false, message: 'Please enter a valid email address.' };
+    }
+    return { success: false, message: e?.message ?? 'Sign up failed.' };
   }
+}
+
+export type InitializeProfileResult = { success: true } | { success: false; message: string };
+
+/**
+ * Create the user profile doc and founding stats (call once after signUpWithEmailAndSendVerification).
+ * Requires the user to be signed in.
+ */
+export async function initializeUserProfileCallable(
+  displayName: string,
+  birthYear: number | null
+): Promise<InitializeProfileResult> {
   try {
     const functions = getFunctions(auth.app, 'us-central1');
-    const requestCode = httpsCallable<
-      { email: string; password: string; displayName: string },
+    const fn = httpsCallable<
+      { displayName: string; birthYear: number | null },
       { success: boolean; message?: string }
-    >(functions, 'requestVerificationCode');
-    const res = await requestCode({ email, password, displayName });
+    >(functions, 'initializeUserProfile');
+    const res = await fn({ displayName: displayName.trim(), birthYear });
     const data = res.data;
     if (data?.success) return { success: true };
-    return { success: false, message: data?.message ?? 'Failed to send code' };
+    return { success: false, message: data?.message ?? 'Could not initialize profile.' };
   } catch (e: any) {
-    return { success: false, message: e?.message ?? 'Verification service unavailable' };
+    return { success: false, message: e?.message ?? 'Service unavailable.' };
   }
-}
-
-/**
- * Verify the 6-digit code and create the account.
- * Production: Cloud Function verifies code, creates user with Admin SDK, returns customToken.
- * Dev: If code is 123456, create user directly with Firebase Auth (no CF).
- */
-export async function verifyAndCreateUser(
-  email: string,
-  code: string,
-  password: string,
-  displayName: string
-): Promise<VerifyCodeResult> {
-  if (__DEV__ && code === DEV_BYPASS_CODE) {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName });
-      return { success: true, customToken: '' }; // Already signed in
-    } catch (e: any) {
-      return { success: false, message: e?.message ?? 'Signup failed' };
-    }
-  }
-  try {
-    const functions = getFunctions(auth.app, 'us-central1');
-    const verifyCode = httpsCallable<
-      { email: string; code: string; password: string; displayName: string },
-      { success: boolean; customToken?: string; message?: string }
-    >(functions, 'verifyEmailCode');
-    const res = await verifyCode({ email, code, password, displayName });
-    const data = res.data;
-    if (data?.success && data?.customToken) {
-      return { success: true, customToken: data.customToken };
-    }
-    return { success: false, message: data?.message ?? 'Invalid or expired code' };
-  } catch (e: any) {
-    return { success: false, message: e?.message ?? 'Verification failed' };
-  }
-}
-
-/**
- * Sign in with custom token (production flow after CF creates the user).
- */
-export async function signInWithCustomToken(token: string): Promise<void> {
-  await firebaseSignInWithCustomToken(auth, token);
 }

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Share,
   Pressable,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -14,83 +13,101 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { useSignal } from '../../hooks/useSignal';
-import { useGame } from '../../context/GameContext';
+import { useWallet } from '../../hooks/useWallet';
 import { OTPointsBadge } from '../../components/OTPointsBadge';
 import { getOrbSignalMarket, VOTE_COST } from '../../constants/OrbSignal';
 import { COLORS } from '../../constants/Colors';
-import * as Haptics from 'expo-haptics';
-
-async function shareMarket(question: string, voted?: string) {
-  try {
-    const message = voted
-      ? `I voted ${voted} on "${question}" — see the odds on OrbTap Orb Signal.`
-      : `"${question}" — What do you think? Vote with OT Points on OrbTap Orb Signal.`;
-    await Share.share({ title: 'Orb Signal', message, url: undefined });
-  } catch {}
-}
+import { useTheme } from '../../hooks/useTheme';
+import { safeHaptics, Haptics } from '../../utils/safeHaptics';
+import { ShareToSocialSheet } from '../../components/ShareToSocialSheet';
+import { ORBTAP_APP_LINK } from '../../constants/AppLinks';
+import { useI18n } from '../../context/I18nContext';
 
 export default function SignalDetailScreen() {
+  const { t } = useI18n();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { getMarket, placeForecast } = useSignal();
-  const { points, purchaseUpgrade } = useGame();
+  const { colors } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
+  const { getMarket, placeForecast, getMyVoteForMarket } = useSignal();
+  const { balance: points, addTransaction } = useWallet();
   const [selectedOutcome, setSelectedOutcome] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [submittedOutcome, setSubmittedOutcome] = useState<number | null>(null);
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [sharePayload, setSharePayload] = useState<{ message: string; title?: string; url?: string } | null>(null);
 
   const marketId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : undefined;
   const market = marketId ? getOrbSignalMarket(marketId) ?? getMarket(marketId) : undefined;
   const canAfford = points >= VOTE_COST;
 
+  // If user already voted on this market (e.g. from list or returning to screen), show success state
+  const existingVote = marketId ? getMyVoteForMarket(marketId) : undefined;
+  React.useEffect(() => {
+    if (existingVote != null && !submitted) {
+      setSubmittedOutcome(existingVote.outcomeIndex);
+      setSubmitted(true);
+    }
+  }, [existingVote?.id, submitted]);
+
   const handleSelect = useCallback((idx: number) => {
-    Haptics.selectionAsync();
+    safeHaptics.selectionAsync();
     setSelectedOutcome(idx);
   }, []);
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     if (selectedOutcome === null || !market) return;
-    const ok = purchaseUpgrade(VOTE_COST, 0);
-    if (!ok) return;
-    placeForecast(market.id, selectedOutcome, VOTE_COST);
-    setSubmittedOutcome(selectedOutcome);
-    setSubmitted(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [market, selectedOutcome, purchaseUpgrade, placeForecast]);
+    await addTransaction({ type: 'spend', amount: VOTE_COST, reason: 'Orb Signal Vote' });
+    const outcomeLabel = market.outcomes?.[selectedOutcome] ?? 'Yes';
+    const persisted = await placeForecast(market.id, selectedOutcome, VOTE_COST, market.question, outcomeLabel);
+    if (persisted) {
+      setSubmittedOutcome(selectedOutcome);
+      setSubmitted(true);
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  }, [market, selectedOutcome, addTransaction, placeForecast]);
 
   const handleShare = useCallback(() => {
     if (!market) return;
-    Haptics.selectionAsync();
+    safeHaptics.selectionAsync();
     const outcomeLabel = submittedOutcome !== null ? market.outcomes[submittedOutcome] : undefined;
-    shareMarket(market.question, outcomeLabel);
+    const message = outcomeLabel
+      ? `I voted ${outcomeLabel} on "${market.question}" — see the odds on OrbTap Orb Signal.`
+      : `"${market.question}" — What do you think? Vote with OT Points on OrbTap Orb Signal.`;
+    setSharePayload({ message, title: 'Orb Signal', url: ORBTAP_APP_LINK });
+    setShareSheetVisible(true);
   }, [market, submittedOutcome]);
 
   if (!market) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <SafeAreaView style={styles.safe}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.notFound}>Market not found</Text>
+          <Text style={[styles.notFound, { color: colors.text }]}>Market not found</Text>
         </SafeAreaView>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={['#0f0f12', '#1a1a20', '#0a0a0d']}
+        colors={[colors.background, colors.surface, colors.background]}
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerBack}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Orb Signal</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Orb Signal</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/wallet' as any)} style={styles.headerBalance} activeOpacity={0.8} accessibilityLabel="Your OT Points. Tap to open Wallet." accessibilityRole="button">
+            <OTPointsBadge amount={points} size={18} label="pts" compact textColor={themeGold} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} style={styles.headerShare}>
-            <Ionicons name="share-outline" size={24} color="#fff" />
+            <Ionicons name="share-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -108,27 +125,27 @@ export default function SignalDetailScreen() {
                 <Text style={styles.liveText}>Ending soon</Text>
               </View>
             )}
-            <Text style={styles.question}>{market.question}</Text>
+            <Text style={[styles.question, { color: colors.text }]}>{market.question}</Text>
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
-                <Ionicons name="people" size={18} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.metaText}>Pool: {market.pool.toLocaleString()} OT Points</Text>
+                <Ionicons name="people" size={18} color={colors.textSecondary} />
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>Pool: {market.pool.toLocaleString()} OT Points</Text>
               </View>
               <View style={styles.metaItem}>
-                <Ionicons name="time" size={18} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.metaText}>Ends {market.endsAtShort}</Text>
+                <Ionicons name="time" size={18} color={colors.textSecondary} />
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>Ends {market.endsAtShort}</Text>
               </View>
             </View>
             {market.rewardNote && (
-              <Text style={styles.rewardNote}>{market.rewardNote}</Text>
+              <Text style={[styles.rewardNote, { color: themeGold }]}>{market.rewardNote}</Text>
             )}
           </Animated.View>
 
           {!submitted ? (
             <>
               <Animated.View entering={FadeInDown.delay(80).duration(400)} style={styles.section}>
-                <Text style={styles.sectionTitle}>Choose your prediction</Text>
-                <Text style={styles.sectionSub}>Vote with {VOTE_COST} OT Points. Correct forecasts earn bonus.</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose your prediction</Text>
+                <Text style={[styles.sectionSub, { color: colors.textSecondary }]}>Vote with {VOTE_COST} OT Points. Correct forecasts earn bonus.</Text>
                 <View style={styles.outcomeList}>
                   {market.outcomes.map((outcome, idx) => {
                     const isYes = outcome.toLowerCase() === 'yes';
@@ -172,11 +189,11 @@ export default function SignalDetailScreen() {
               </Animated.View>
 
               <View style={styles.costRow}>
-                <Text style={styles.costLabel}>Vote cost</Text>
-                <OTPointsBadge amount={VOTE_COST} size={18} label="pts" compact textColor="#F59E0B" />
+                <Text style={[styles.costLabel, { color: colors.textSecondary }]}>Vote cost</Text>
+                <OTPointsBadge amount={VOTE_COST} size={18} label="pts" compact textColor={themeGold} />
               </View>
               {!canAfford && (
-                <Text style={styles.cantAfford}>You need {VOTE_COST - points} more OT Points to vote.</Text>
+                <Text style={[styles.cantAfford, { color: colors.textSecondary }]}>You need {VOTE_COST - points} more OT Points to vote.</Text>
               )}
 
               <TouchableOpacity
@@ -215,20 +232,28 @@ export default function SignalDetailScreen() {
           )}
 
           <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.explainer}>
-            <Text style={styles.explainerTitle}>How odds work</Text>
-            <Text style={styles.explainerBody}>
+            <Text style={[styles.explainerTitle, { color: colors.text }]}>How odds work</Text>
+            <Text style={[styles.explainerBody, { color: colors.textSecondary }]}>
               The percentages show the current market view: e.g. 72% YES means most forecasters think it will happen.
               Your vote updates the odds slightly. When the market closes, correct predictors earn bonus OT Points and Orb Rep — no cash value, just bragging rights and in-app rewards.
             </Text>
           </Animated.View>
 
           <View style={styles.disclaimer}>
-            <Text style={styles.disclaimerText}>
+            <Text style={[styles.disclaimerText, { color: colors.textSecondary }]}>
               Entertainment only. No wagering. Not financial advice. OT Points have no cash value.
             </Text>
           </View>
         </ScrollView>
       </SafeAreaView>
+      {sharePayload && (
+        <ShareToSocialSheet
+          visible={shareSheetVisible}
+          onClose={() => { setShareSheetVisible(false); setSharePayload(null); }}
+          payload={sharePayload}
+          label="Share Orb Signal"
+        />
+      )}
     </View>
   );
 }
@@ -246,6 +271,7 @@ const styles = StyleSheet.create({
   },
   headerBack: { padding: 8, marginRight: 8 },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: '800', color: '#FFF' },
+  headerBalance: { padding: 4, marginRight: 4 },
   headerShare: { padding: 8 },
   scrollContent: { padding: 20, paddingBottom: 48 },
   notFound: { color: '#fff', fontSize: 16, padding: 20 },

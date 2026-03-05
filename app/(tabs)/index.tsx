@@ -30,6 +30,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../hooks/useTheme';
 import { useFlags } from '../../components/FlagContext';
 import { useWallet } from '../../hooks/useWallet';
+import { OTPointsBalanceLink } from '../../components/OTPointsBalanceLink';
 import { useDrops } from '../../hooks/useDrops';
 import { usePulse } from '../../hooks/usePulse';
 import { useMissions } from '../../context/MissionsContext';
@@ -106,7 +107,7 @@ export default function DiscoveryHubScreen() {
   const themeGold = COLORS.gold[0];
   const { flags } = useFlags();
   const { user } = useAuth();
-  const { verifiedActions } = useWallet();
+  const { verifiedActions, balance } = useWallet();
   const nextPerkGoal = useNextPerkGoal();
   const { drops, loading: dropsLoading, refresh: refreshDrops } = useDrops();
   const { liveTiles } = usePulse();
@@ -169,6 +170,8 @@ export default function DiscoveryHubScreen() {
     });
     return ids;
   }, [allPartners]);
+
+  const hotSpotPartnerIdsArray = useMemo(() => [...hotSpotPartnerIds], [hotSpotPartnerIds]);
 
   const gridCategories = useMemo(() => {
     const set = new Set<string>();
@@ -325,7 +328,7 @@ export default function DiscoveryHubScreen() {
           onSelectPartner={handleSelectPartner}
           selectedId={selectedPartner?.id ?? null}
           missionPartnerIds={missionPartnerIds}
-          hotSpotPartnerIds={[...hotSpotPartnerIds]}
+          hotSpotPartnerIds={hotSpotPartnerIdsArray}
         />
       </Suspense>
     </MapErrorBoundary>
@@ -381,8 +384,17 @@ export default function DiscoveryHubScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Right: Pulse + Menu */}
+        {/* Right: Balance (single canonical OT points), Pulse, Menu */}
         <View style={styles.headerRight}>
+          <View style={styles.headerBalanceWrap}>
+            <OTPointsBalanceLink
+              amount={balance}
+              size={18}
+              label="pts"
+              compact
+              textColor={colors.text}
+            />
+          </View>
           {flags.isOrbPulseEnabled && (
             <TouchableOpacity
               style={styles.headerIconBtn}
@@ -988,6 +1000,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     flexShrink: 0,
+  },
+  headerBalanceWrap: {
+    marginRight: 4,
+    justifyContent: 'center',
   },
   headerIconBtn: {
     width: 40,

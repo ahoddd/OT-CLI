@@ -46,7 +46,7 @@ export function BookmarkProvider({ children }: { children: React.ReactNode }) {
           setPerks(Array.isArray(data.perks) ? data.perks : []);
         }
       } catch (e) {
-        console.error('Bookmarks load failed', e);
+        if (__DEV__) console.error('Bookmarks load failed', e);
       } finally {
         setLoading(false);
       }

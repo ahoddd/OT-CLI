@@ -16,8 +16,10 @@ import { COLORS } from '../../constants/Colors';
 import { SPACE } from '../../constants/DesignTokens';
 import { showErrorAlert } from '../../utils/alert';
 import { alert } from '../../utils/alert';
+import { useI18n } from '../../context/I18nContext';
 
 export default function HotSpotActivateScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];

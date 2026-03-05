@@ -11,12 +11,13 @@ import { COLORS } from '../constants/Colors';
 import { ORBTAP_KNOWLEDGE_SHARE_SUFFIX } from '../constants/AppLinks';
 import { useTheme } from '../hooks/useTheme';
 import { useKnowledge } from '../context/KnowledgeContext';
-import * as Haptics from 'expo-haptics';
+import { safeHaptics, Haptics } from '../utils/safeHaptics';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 
 export function DailyFactCard() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const themeGold = colors.gold ?? COLORS.gold[0];
   const {
     currentItem,
     loading,
@@ -37,14 +38,14 @@ export function DailyFactCard() {
   }, [ensureFreshOnAppOpen]);
 
   const advanceToNext = useCallback(async () => {
-    Haptics.selectionAsync();
+    safeHaptics.selectionAsync();
     flip.value = withSpring(1, { damping: 12 }, () => { flip.value = 0; });
     await next();
   }, [next, flip]);
 
   const handleShare = useCallback(async () => {
     if (!currentItem) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    safeHaptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const authorLine = currentItem.author ? ` — ${currentItem.author}` : '';
     const message = currentItem.type === 'quote'
       ? `"${currentItem.text}"${authorLine}${ORBTAP_KNOWLEDGE_SHARE_SUFFIX}`
@@ -87,9 +88,9 @@ export function DailyFactCard() {
         style={[styles.card, { borderColor: colors.border }]}
       >
         <View style={styles.header}>
-          <View style={[styles.badge, { backgroundColor: isQuote ? COLORS.gold[0] + '22' : COLORS.neonBlue[0] + '22' }]}>
-            <Ionicons name={isQuote ? 'chatbox-ellipses' : 'bulb'} size={12} color={isQuote ? COLORS.gold[0] : COLORS.neonBlue[0]} />
-            <Text style={[styles.badgeText, { color: isQuote ? COLORS.gold[0] : COLORS.neonBlue[0] }]}>
+          <View style={[styles.badge, { backgroundColor: isQuote ? themeGold + '22' : COLORS.neonBlue[0] + '22' }]}>
+            <Ionicons name={isQuote ? 'chatbox-ellipses' : 'bulb'} size={12} color={isQuote ? themeGold : COLORS.neonBlue[0]} />
+            <Text style={[styles.badgeText, { color: isQuote ? themeGold : COLORS.neonBlue[0] }]}>
               {isQuote ? 'QUOTE' : 'DAILY INTEL'}
             </Text>
           </View>
@@ -120,7 +121,7 @@ export function DailyFactCard() {
               onPress={() => (isSaved(currentItem.id) ? unsave(currentItem.id) : save(currentItem))}
               style={styles.voteBtn}
             >
-              <Ionicons name={isSaved(currentItem.id) ? 'bookmark' : 'bookmark-outline'} size={18} color={isSaved(currentItem.id) ? COLORS.gold[0] : colors.textSecondary} />
+              <Ionicons name={isSaved(currentItem.id) ? 'bookmark' : 'bookmark-outline'} size={18} color={isSaved(currentItem.id) ? themeGold : colors.textSecondary} />
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={[styles.nextBtn, { borderColor: colors.border }]} onPress={advanceToNext}>

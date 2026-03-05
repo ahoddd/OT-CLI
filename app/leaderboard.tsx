@@ -22,11 +22,13 @@ import { useAuth } from '../context/AuthContext';
 import { useEffectiveTier } from '../hooks/useEffectiveTier';
 import { isAdminEmail } from '../constants/Admin';
 import { getLeaderboardExplorers, getLeaderboardStreaks } from '../services/leaderboardFirestore';
+import { useI18n } from '../context/I18nContext';
 
 const SAMPLE_EXPLORERS: { id: string; name: string; val: string; badge?: string }[] = [];
 const SAMPLE_STREAKS: { id: string; name: string; val: string; badge?: string }[] = [];
 
 export default function LeaderboardScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const themeGold = colors.gold ?? COLORS.gold[0];
@@ -73,25 +75,25 @@ export default function LeaderboardScreen() {
       <View style={[styles.quickLinksRow, { borderBottomColor: colors.border }]}>
         <TouchableOpacity style={[styles.quickPill, { backgroundColor: colors.background }]} onPress={() => { safeHaptics.selectionAsync(); router.push('/stats' as any); }}>
           <Ionicons name="stats-chart" size={16} color={colors.text} />
-          <Text style={[styles.quickPillText, { color: colors.text }]}>Stats</Text>
+          <Text style={[styles.quickPillText, { color: colors.text }]}>{t('leaderboard.stats')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.quickPill, { backgroundColor: colors.background }]} onPress={() => { safeHaptics.selectionAsync(); router.push('/missions' as any); }}>
           <Ionicons name="flag" size={16} color={colors.text} />
-          <Text style={[styles.quickPillText, { color: colors.text }]}>Missions</Text>
+          <Text style={[styles.quickPillText, { color: colors.text }]}>{t('leaderboard.missions')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.quickPill, { backgroundColor: colors.background }]} onPress={() => { safeHaptics.selectionAsync(); router.push('/vote' as any); }}>
           <Ionicons name="stats-chart" size={16} color={colors.text} />
-          <Text style={[styles.quickPillText, { color: colors.text }]}>OrbVote</Text>
+          <Text style={[styles.quickPillText, { color: colors.text }]}>{t('leaderboard.orbVote')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.quickPill, { backgroundColor: colors.background }]} onPress={() => { safeHaptics.selectionAsync(); router.push('/spheres' as any); }}>
           <Ionicons name="people" size={16} color={colors.text} />
-          <Text style={[styles.quickPillText, { color: colors.text }]}>Spheres</Text>
+          <Text style={[styles.quickPillText, { color: colors.text }]}>{t('leaderboard.spheres')}</Text>
         </TouchableOpacity>
       </View>
-      <Text style={[styles.sharePrompt, { color: colors.textSecondary }]}>Rising on the board? Share your rank and invite friends to compete.</Text>
+      <Text style={[styles.sharePrompt, { color: colors.textSecondary }]}>{t('leaderboard.sharePrompt')}</Text>
       <TouchableOpacity style={[styles.shareBtn, { backgroundColor: themeGold + '22', borderColor: themeGold }]} onPress={handleShareRank}>
         <Ionicons name="share-outline" size={18} color={themeGold} />
-        <Text style={[styles.shareBtnText, { color: themeGold }]}>Share your rank</Text>
+        <Text style={[styles.shareBtnText, { color: themeGold }]}>{t('leaderboard.shareYourRank')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -146,11 +148,11 @@ export default function LeaderboardScreen() {
     }
   };
 
-  const getLabel = (t: string) => {
-    if (t === 'users') return 'Explorers';
-    if (t === 'partners') return 'Partners';
-    if (t === 'spheres') return 'Spheres';
-    if (t === 'streaks') return 'Streaks';
+  const getLabel = (tabKey: string) => {
+    if (tabKey === 'users') return t('leaderboard.explorers');
+    if (tabKey === 'partners') return t('leaderboard.partners');
+    if (tabKey === 'spheres') return t('leaderboard.spheres');
+    if (tabKey === 'streaks') return t('leaderboard.streaks');
     return '';
   };
 
@@ -199,6 +201,8 @@ export default function LeaderboardScreen() {
     const rank = index + 1;
     const score = item.val;
     const subtext = isPartnerTab ? (item as any).tier : (item as any).badge ?? '';
+    // Mock rank change — alternating pattern for visual demo; replace with real data from Firestore
+    const mockRankChange = index === 0 ? 0 : index % 3 === 1 ? (index % 6 < 3 ? 2 : -1) : index % 3 === 2 ? -3 : 1;
     const partnerTier = isPartnerTab && (item as any).tier === 'Platinum' ? 'pro' as const : undefined;
     const userTier = isUserOrStreakTab && item.id === user?.uid ? effectiveTier : undefined;
 
@@ -232,14 +236,14 @@ export default function LeaderboardScreen() {
           </View>
           {isSphereTab ? (
             <TouchableOpacity activeOpacity={0.88} onPress={() => { safeHaptics.selectionAsync(); router.push(`/spheres/${item.id}` as any); }}>
-              <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} />
+              <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} rankChange={mockRankChange} />
             </TouchableOpacity>
           ) : isPartnerTab ? (
-            <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner tier={partnerTier} onPress={() => { safeHaptics.selectionAsync(); router.push(`/partner/${item.id}` as any); }} />
+            <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner tier={partnerTier} rankChange={mockRankChange} onPress={() => { safeHaptics.selectionAsync(); router.push(`/partner/${item.id}` as any); }} />
           ) : isUserOrStreakTab ? (
-            <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} tier={userTier} onPress={() => goToUserProfile(item.id)} />
+            <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} tier={userTier} rankChange={mockRankChange} onPress={() => goToUserProfile(item.id)} />
           ) : (
-            <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} tier={userTier} />
+            <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} tier={userTier} rankChange={mockRankChange} />
           )}
         </View>
       );
@@ -248,21 +252,21 @@ export default function LeaderboardScreen() {
     if (isSphereTab) {
       return (
         <TouchableOpacity activeOpacity={0.88} onPress={() => { safeHaptics.selectionAsync(); router.push(`/spheres/${item.id}` as any); }}>
-          <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} />
+          <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} rankChange={mockRankChange} />
         </TouchableOpacity>
       );
     }
     if (isPartnerTab) {
       return (
-        <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner tier={partnerTier} onPress={() => { safeHaptics.selectionAsync(); router.push(`/partner/${item.id}` as any); }} />
+        <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner tier={partnerTier} rankChange={mockRankChange} onPress={() => { safeHaptics.selectionAsync(); router.push(`/partner/${item.id}` as any); }} />
       );
     }
     if (isUserOrStreakTab) {
       return (
-        <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} tier={userTier} onPress={() => goToUserProfile(item.id)} />
+        <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} tier={userTier} rankChange={mockRankChange} onPress={() => goToUserProfile(item.id)} />
       );
     }
-    return <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} tier={userTier} />;
+    return <LeaderboardRow rank={rank} name={item.name} score={score} subtext={subtext} isPartner={false} tier={userTier} rankChange={mockRankChange} />;
   };
 
   return (

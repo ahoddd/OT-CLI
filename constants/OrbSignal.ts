@@ -3,6 +3,8 @@
  * Shared market type and mock data for list + detail screens.
  */
 
+import type { PartnerTier } from './PartnerTiers';
+
 export type OrbSignalCategory = 'Local' | 'Tech' | 'Pop Culture' | 'City' | 'Partner' | 'Fun';
 
 export interface OrbSignalMarket {
@@ -17,6 +19,8 @@ export interface OrbSignalMarket {
   category: OrbSignalCategory;
   /** Optional partner id for partner-linked signals (e.g. "Will Pub 447 hit 100 check-ins?") */
   partnerId?: string;
+  /** Partner tier for tile border/glow (silver / gold / platinum). Uses same colors as partner tiers. */
+  tier?: PartnerTier;
   /** Show as featured / trending on list */
   featured?: boolean;
   /** Ending soon — show closing-soon badge and urgency copy */
@@ -77,6 +81,7 @@ export const MOCK_ORB_SIGNAL_MARKETS: OrbSignalMarket[] = [
     endsAtShort: '1d left',
     category: 'Partner',
     partnerId: 'p3',
+    tier: 'gold',
     endingSoon: true,
     liveViewers: 23,
     voteCost: VOTE_COST,
@@ -121,6 +126,7 @@ export const MOCK_ORB_SIGNAL_MARKETS: OrbSignalMarket[] = [
     endsAtShort: '29d left',
     category: 'Partner',
     partnerId: 'p8',
+    tier: 'gold',
     liveViewers: 34,
     voteCost: VOTE_COST,
     rewardNote: 'Bonus OT Points + resort perk',

@@ -18,12 +18,24 @@ export interface OrbinomicsConfig {
 }
 
 export const DEFAULT_ORBINOMICS: OrbinomicsConfig = {
-  burnRateOnSpend: 0.02,
-  feeRateOnEarn: 0.01,
+  burnRateOnSpend: 0.05,   // 5%: users spend 105 OT to consume 100 OT worth; 5 OT to treasury
+  feeRateOnEarn: 0.20,     // 20%: OrbTap takes 20% of every OT emitted before crediting user
   appreciationFactor: 1.0,
   minPointsThreshold: 10,
   label: 'Default',
 };
+
+/**
+ * OT-to-dollar display rate — OrbTap-controlled constant used to show users
+ * a "value earned" figure (e.g. 1000 OT = $10 display). Users see big numbers;
+ * OrbTap controls the denominator. Never represents real monetary value.
+ */
+export const OT_TO_DISPLAY_DOLLAR_RATE = 0.01; // 100 OT = $1.00 display
+
+/** Convert OT Points to a display dollar string. */
+export function otToDisplayDollars(points: number): string {
+  return `$${(points * OT_TO_DISPLAY_DOLLAR_RATE).toFixed(2)}`;
+}
 
 export const ORBINOMICS_STORAGE_KEY = 'ORBTAP_ORBINOMICS_V1';
 

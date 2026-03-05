@@ -25,7 +25,12 @@ export const COLORS = {
     shadow: '#60a5fa',
     tabBar: '#000000',
     navIcon: '#888888',
-    navIconActive: '#ffffff'
+    navIconActive: '#ffffff',
+    primary: '#60a5fa',
+    /** Optional: gradient for hero strips [top, bottom]. */
+    heroGradient: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.5)'] as [string, string],
+    /** Optional: soft glow for key cards (e.g. balance, featured). */
+    cardGlow: 'rgba(96,165,250,0.08)',
   },
   light: {
     background: '#f2f2f7', // iOS System Gray 6 (Soft Silver)
@@ -39,6 +44,9 @@ export const COLORS = {
     shadow: '#999999',
     tabBar: '#ffffff',
     navIcon: '#999999',
-    navIconActive: '#000000'
+    navIconActive: '#000000',
+    primary: '#3b82f6',
+    heroGradient: ['rgba(255,255,255,0)', 'rgba(0,0,0,0.06)'] as [string, string],
+    cardGlow: 'rgba(59,130,246,0.06)',
   }
 };

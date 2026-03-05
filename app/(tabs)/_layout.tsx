@@ -34,35 +34,33 @@ import { GlobalAnnouncementBanner } from '../../components/GlobalAnnouncementBan
 import { DirectoryOpenProvider } from '../../context/DirectoryOpenContext';
 import { TabSubmenuProvider } from '../../context/TabSubmenuContext';
 import { RootErrorBoundary } from '../../components/RootErrorBoundary';
+import { useI18n } from '../../context/I18nContext';
 
-const TAB_A11Y_LABELS: Record<string, string> = {
-  index: 'Home',
-  orb: 'Home, open directory',
-  scan: 'Scan QR code',
-  wallet: 'Wallet',
-  profile: 'Profile',
-  map: 'Map',
-  orbsignal: 'Orb Signal',
-  pulse: 'Pulse',
-  missions: 'Missions',
-  leaderboard: 'Leaderboard',
-  premium: 'Premium',
-  settings: 'Settings',
-  bookmarks: 'Bookmarks',
-  knowledge: 'Knowledge',
-  stats: 'Stats',
-  spheres: 'Spheres',
-  upgrades: 'Upgrades',
-  'compare-accounts': 'Compare accounts',
-  partner: 'Partner',
-  admin: 'Admin',
-  intent: 'Deal Match',
-  orbpass: 'OrbPass',
-  'partner-orb': 'Partner command',
+const TAB_A11Y_KEYS: Record<string, string> = {
+  index: 'tabs.home',
+  orb: 'tabs.homeHoldScan',
+  scan: 'tabs.scan',
+  wallet: 'tabs.wallet',
+  profile: 'tabs.profile',
+  map: 'tabs.map',
+  orbsignal: 'tabs.orbsignal',
+  pulse: 'tabs.pulse',
+  missions: 'tabs.missions',
+  leaderboard: 'tabs.leaderboard',
+  premium: 'tabs.premium',
+  settings: 'tabs.settings',
+  bookmarks: 'tabs.bookmarks',
+  knowledge: 'tabs.knowledge',
+  stats: 'tabs.stats',
+  spheres: 'tabs.spheres',
+  upgrades: 'tabs.upgrades',
+  'compare-accounts': 'tabs.compareAccounts',
+  partner: 'tabs.partner',
+  admin: 'tabs.admin',
+  intent: 'tabs.intent',
+  orbpass: 'tabs.orbpass',
+  'partner-orb': 'tabs.partnerCommand',
 };
-function getTabA11yLabel(name: string): string {
-  return TAB_A11Y_LABELS[name] ?? name;
-}
 
 function TabButtonWithIllumination({
   tabId,
@@ -96,6 +94,7 @@ function TabButtonWithIllumination({
 }
 
 export default function TabLayout() {
+  const { t } = useI18n();
   const { colors, isDark } = useTheme();
   const { balance } = useWallet();
   const { tabOrder, tabHidden, loading } = useAdminLayout();
@@ -107,6 +106,11 @@ export default function TabLayout() {
   const router = useRouter();
   const { announcement, visible, dismiss, refresh: refreshAnnouncement } = useGlobalAnnouncement();
   const hasRedirectedToLanding = useRef(false);
+
+  function getTabA11yLabel(name: string): string {
+    const key = TAB_A11Y_KEYS[name];
+    return key ? t(key) : name;
+  }
 
   // Redirect unauthenticated users once; omit router from deps to avoid effect re-running every render (router ref can change)
   useEffect(() => {
@@ -174,7 +178,7 @@ export default function TabLayout() {
         ),
       tabBarActiveTintColor: tabBarActiveColor,
       tabBarInactiveTintColor: colors.textSecondary,
-      tabBarShowLabel: false,
+      tabBarShowLabel: true,
     }),
     [tabBarHeight, isDark, tabBarActiveColor, colors.textSecondary]
   );
@@ -204,7 +208,8 @@ export default function TabLayout() {
                 redirect={!loading && hiddenIds.includes(name)}
                 options={{
                   href: undefined,
-                  tabBarAccessibilityLabel: name === 'orb' ? 'Home, hold for Scan' : name === 'partner-orb' ? 'Home, partner command' : getTabA11yLabel(name),
+                  tabBarLabel: getTabA11yLabel(name),
+                  tabBarAccessibilityLabel: name === 'orb' ? t('tabs.homeHoldScan') : name === 'partner-orb' ? t('tabs.partnerCommand') : getTabA11yLabel(name),
                   tabBarButton:
                     name === 'orb' || name === 'partner-orb'
                       ? () => <TabBarOrb />
@@ -253,7 +258,7 @@ export default function TabLayout() {
           <OTPointsBalanceLink
             amount={balance}
             size={16}
-            label="pts"
+            label={t('tabs.pts')}
             compact
             textColor={colors.text}
             style={[styles.tabBarBalancePill, { backgroundColor: colors.surface, borderColor: colors.border }]}

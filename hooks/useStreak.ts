@@ -30,7 +30,7 @@ export const useStreak = () => {
         setStreak(JSON.parse(data));
       }
     } catch (e) {
-      console.error('Streak load failed', e);
+      if (__DEV__) console.error('Streak load failed', e);
     } finally {
       setLoading(false);
     }

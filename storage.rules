@@ -1,0 +1,38 @@
+rules_version = '2';
+// OrbTap Firebase Storage — partner post images, menu photos, profile/featured images.
+// Deploy: firebase deploy --only storage
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Partner post images: posts/{partnerId}/...
+    // Only the partner (auth.uid == partnerId) can upload; anyone can read (for feed).
+    match /posts/{partnerId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == partnerId;
+    }
+
+    // Menu uploads: menus/{partnerId}/...
+    match /menus/{partnerId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == partnerId;
+    }
+
+    // User profile avatars: users/{userId}/...
+    match /users/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Featured carousel images (Admin Hub) — authenticated write, public read
+    match /featured/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Default: deny all other paths not explicitly allowed above
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

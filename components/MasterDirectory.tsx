@@ -1,15 +1,16 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Modal,
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
   ScrollView,
   Image,
+  Platform,
+  Pressable,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +18,15 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { isAdminEmail } from '../constants/Admin';
 import { useFlags } from './FlagContext';
+import { useAdminLayout } from '../context/AdminLayoutContext';
+import { useEffectiveTier } from '../hooks/useEffectiveTier';
+import { isPageVisible } from '../constants/AdminConfig';
+import { useTheme } from '../hooks/useTheme';
+import { OrbTapLogoMark } from './OrbTapLogoMark';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { safeHaptics } from '../utils/safeHaptics';
+
+const CARD_GAP = 12;
 
 type DirectoryItem = {
   id: string;
@@ -28,233 +38,117 @@ type DirectoryItem = {
 };
 
 const DIRECTORY_ITEMS: DirectoryItem[] = [
-  { id: 'map', label: 'Map', icon: 'map', route: '/(tabs)', description: 'Explore nearby orbs and partners.', color: '#22C55E' },
-  { id: 'pulse', label: 'OrbPulse Live', icon: 'pulse', route: '/pulse', description: "City's live heartbeat — verified momentum only.", color: '#4ADE80' },
-  { id: 'orb', label: 'The Orb', icon: 'planet', route: '/(tabs)/orb', description: 'Core tapping experience.', color: '#60A5FA' },
-  { id: 'missions', label: 'Missions', icon: 'flag', route: '/missions', description: 'Daily missions — earn OT Points.', color: '#FBBF24' },
-  { id: 'wallet', label: 'Wallet', icon: 'wallet', route: '/(tabs)/wallet', description: 'Assets, Earn next, Spend power-ups.', color: '#FBBF24' },
-  { id: 'bookmarks', label: 'Bookmarks', icon: 'bookmark', route: '/bookmarks', description: 'Saved partners and perks.', color: '#F59E0B' },
-  { id: 'upgrades', label: 'Upgrades', icon: 'flash', route: '/upgrades', description: 'Boost your tap power.', color: '#F59E0B' },
-  { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy', route: '/leaderboard', description: 'Global rankings.', color: '#A78BFA' },
-  { id: 'orbsignal', label: 'Orb Signal', icon: 'radio', route: '/orbsignal', description: 'Predict. Vote. Earn.', color: '#EF4444' },
-  { id: 'spheres', label: 'Spheres', icon: 'people', route: '/spheres', description: 'Invite-only groups. Pool points, share experiences.', color: '#8B5CF6' },
-  { id: 'stats', label: 'Stats', icon: 'stats-chart', route: '/stats', description: 'Your impact — points, streak, missions, badges.', color: '#22C55E' },
-  { id: 'knowledge', label: 'Knowledge', icon: 'bulb', route: '/knowledge', description: 'Fun facts & motivational quotes — like, share, save.', color: '#FBBF24' },
-  { id: 'premium', label: 'Premium', icon: 'diamond', route: '/premium', description: 'Unlock your full potential — badge, stats, early access.', color: '#FBBF24' },
-  { id: 'compare-accounts', label: 'Compare plans', icon: 'git-compare', route: '/compare-accounts', description: 'Free vs Premium — see what you get with each.', color: '#A78BFA' },
-  { id: 'settings', label: 'Settings', icon: 'settings-sharp', route: '/settings', description: 'Preferences and system.', color: '#9CA3AF' },
+  { id: 'map', label: 'Map', icon: 'map', route: '/(tabs)', description: 'Explore nearby', color: '#22C55E' },
+  { id: 'orb', label: 'The Orb', icon: 'planet', route: '/(tabs)/orb', description: 'Core experience', color: '#60A5FA' },
+  { id: 'profile', label: 'Profile', icon: 'person', route: '/(tabs)/profile', description: 'Your account', color: '#8B5CF6' },
+  { id: 'scan', label: 'Scan', icon: 'qr-code', route: '/(tabs)/scan', description: 'Redeem & verify', color: '#4ADE80' },
+  { id: 'partners', label: 'Partners', icon: 'business', route: '/partners', description: 'Browse & perks', color: '#0EA5E9' },
+  { id: 'people', label: 'People', icon: 'people', route: '/people', description: 'Friends & requests', color: '#8B5CF6' },
+  { id: 'pulse', label: 'OrbPulse', icon: 'pulse', route: '/pulse', description: "City's heartbeat", color: '#4ADE80' },
+  { id: 'missions', label: 'Missions', icon: 'flag', route: '/missions', description: 'Earn OT Points', color: '#FBBF24' },
+  { id: 'wallet', label: 'Wallet', icon: 'wallet', route: '/(tabs)/wallet', description: 'Assets & power-ups', color: '#FBBF24' },
+  { id: 'bookmarks', label: 'Bookmarks', icon: 'bookmark', route: '/bookmarks', description: 'Saved places', color: '#F59E0B' },
+  { id: 'upgrades', label: 'Upgrades', icon: 'flash', route: '/upgrades', description: 'Tap power', color: '#F59E0B' },
+  { id: 'leaderboard', label: 'Leaderboard', icon: 'trophy', route: '/leaderboard', description: 'Rankings', color: '#A78BFA' },
+  { id: 'vote', label: 'OrbVote', icon: 'stats-chart', route: '/vote', description: 'Polls', color: '#60A5FA' },
+  { id: 'orbsignal', label: 'Orb Signal', icon: 'radio', route: '/orbsignal', description: 'Predict & earn', color: '#EF4444' },
+  { id: 'spheres', label: 'Spheres', icon: 'people', route: '/spheres', description: 'Invite-only groups', color: '#8B5CF6' },
+  { id: 'stats', label: 'Stats', icon: 'stats-chart', route: '/stats', description: 'Your impact', color: '#22C55E' },
+  { id: 'knowledge', label: 'Knowledge', icon: 'bulb', route: '/knowledge', description: 'Facts & quotes', color: '#FBBF24' },
+  { id: 'premium', label: 'Premium', icon: 'diamond', route: '/premium', description: 'Unlock more', color: '#FBBF24' },
+  { id: 'compare-accounts', label: 'Compare', icon: 'git-compare', route: '/compare-accounts', description: 'Plans', color: '#A78BFA' },
+  { id: 'settings', label: 'Settings', icon: 'settings-sharp', route: '/settings', description: 'Preferences', color: '#9CA3AF' },
 ];
 
-const ADMIN_ITEM: DirectoryItem = {
-  id: 'admin',
-  label: 'Admin Hub',
-  icon: 'construct',
-  route: '/admin',
-  description: 'Feature flags, map provider, audit log.',
-  color: '#FBBF24',
+const ADMIN_ITEM: DirectoryItem = { id: 'admin', label: 'Admin', icon: 'construct', route: '/admin', description: 'Hub', color: '#FBBF24' };
+const ORBOPS_ITEM: DirectoryItem = { id: 'orbops', label: 'Work Orders', icon: 'document-text', route: '/work-orders', description: 'Jobs & proof', color: '#22C55E' };
+const BOUNTY_ITEM: DirectoryItem = { id: 'bounty', label: 'OrbBounty', icon: 'gift', route: '/bounty', description: 'Deal Bounty', color: '#F59E0B' };
+const INTENT_ITEM: DirectoryItem = { id: 'intent', label: 'Deal Match', icon: 'flash', route: '/intent', description: 'Post intent, get offers', color: '#8B5CF6' };
+const ORBPASS_ITEM: DirectoryItem = { id: 'orbpass', label: 'OrbPass', icon: 'card', route: '/orbpass', description: 'Member perks & redemptions', color: '#22C55E' };
+const FEED_ITEM: DirectoryItem = { id: 'feed', label: 'Commerce Feed', icon: 'newspaper', route: '/feed', description: 'Partner posts', color: '#4ADE80' };
+const OPPORTUNITIES_ITEM: DirectoryItem = { id: 'opportunities', label: 'Opportunities', icon: 'briefcase', route: '/opportunities', description: 'Hiring', color: '#22C55E' };
+const ORBSWIPE_ITEM: DirectoryItem = { id: 'orbswipe', label: 'OrbSwipe', icon: 'swap-horizontal', route: '/orbswipe', description: 'Swipe tonight', color: '#A78BFA' };
+const SECTION_IDS = ['core', 'live', 'discover', 'learn', 'account'] as const;
+const ALL_SECTION_ID = 'all' as const;
+const TAB_SECTION_IDS = [ALL_SECTION_ID, ...SECTION_IDS] as const;
+const SECTION_LABELS: Record<(typeof TAB_SECTION_IDS)[number], string> = {
+  all: 'All',
+  core: 'Core',
+  live: 'Live & Compete',
+  discover: 'Discover',
+  learn: 'Learn & Grow',
+  account: 'Account',
+};
+const ITEM_SECTION: Record<string, (typeof SECTION_IDS)[number]> = {
+  map: 'core', orb: 'core', profile: 'core', scan: 'core', partners: 'discover', people: 'discover', wallet: 'core', pulse: 'live', missions: 'live', leaderboard: 'live',
+  vote: 'live', orbsignal: 'live', orbswipe: 'discover', spheres: 'discover', bookmarks: 'discover', upgrades: 'discover',
+  orbops: 'discover', bounty: 'discover', intent: 'discover', orbpass: 'discover', feed: 'discover', opportunities: 'discover', stats: 'learn', knowledge: 'learn',
+  premium: 'learn', 'compare-accounts': 'learn', settings: 'account', admin: 'account',
 };
 
-const ARENA_ITEM: DirectoryItem = {
-  id: 'arena',
-  label: 'OrbArena',
-  icon: 'trophy',
-  route: '/arena',
-  description: 'Compete with proof. Weekly challenges, verified voting.',
-  color: '#F59E0B',
+const SECTION_ACCENT: Record<string, string> = {
+  core: '#60A5FA',
+  live: '#4ADE80',
+  discover: '#8B5CF6',
+  learn: '#FBBF24',
+  account: '#9CA3AF',
 };
 
-/** Page-specific mini visual for each directory tile — map, orb, missions, wallet, etc. */
-function DirectoryVisual({ id, color }: { id: string; color: string }) {
-  const c = color;
-  const dot = { width: 5, height: 5, borderRadius: 3, backgroundColor: c, opacity: 0.9 };
-  const line = { height: 2, backgroundColor: c, opacity: 0.6, borderRadius: 1 };
-
-  switch (id) {
-    case 'map':
-      return (
-        <View style={dirStyles.mapWrap}>
-          <View style={[dirStyles.mapGrid, { borderColor: c + '60' }]}>
-            {[0, 1, 2].map((row) => (
-              <View key={row} style={dirStyles.mapRow}>
-                {[0, 1, 2].map((col) => (
-                  <View key={col} style={[dot, { marginHorizontal: 2, marginVertical: 2 }]} />
-                ))}
-              </View>
-            ))}
-          </View>
-          <View style={[dirStyles.mapRoad, { backgroundColor: c + '80' }]} />
-        </View>
-      );
-    case 'pulse':
-      return (
-        <View style={dirStyles.pulseWrap}>
-          <View style={[dirStyles.pulseBar, dirStyles.pulse1, { backgroundColor: c }]} />
-          <View style={[dirStyles.pulseBar, dirStyles.pulse2, { backgroundColor: c, opacity: 0.8 }]} />
-          <View style={[dirStyles.pulseBar, dirStyles.pulse3, { backgroundColor: c, opacity: 0.5 }]} />
-        </View>
-      );
-    case 'orb':
-      return (
-        <View style={[dirStyles.orbOuter, { borderColor: c }]}>
-          <View style={[dirStyles.orbMid, { borderColor: c, opacity: 0.7 }]} />
-          <View style={[dirStyles.orbInner, { backgroundColor: c }]} />
-        </View>
-      );
-    case 'missions':
-      return (
-        <View style={dirStyles.flagWrap}>
-          <View style={[dirStyles.flagPole, { backgroundColor: c }]} />
-          <View style={[dirStyles.flagFlag, { borderColor: c, backgroundColor: c + '40' }]} />
-        </View>
-      );
-    case 'wallet':
-      return (
-        <View style={dirStyles.walletWrap}>
-          <View style={[dirStyles.coin, dirStyles.coin1, { backgroundColor: c }]} />
-          <View style={[dirStyles.coin, dirStyles.coin2, { backgroundColor: c, opacity: 0.85 }]} />
-          <View style={[dirStyles.coin, dirStyles.coin3, { backgroundColor: c, opacity: 0.6 }]} />
-        </View>
-      );
-    case 'bookmarks':
-      return (
-        <View style={[dirStyles.bookmarkShape, { borderColor: c }]}>
-          <View style={[dirStyles.bookmarkFold, { backgroundColor: c + '99' }]} />
-        </View>
-      );
-    case 'upgrades':
-      return (
-        <View style={dirStyles.boltWrap}>
-          <View style={[dirStyles.boltSegment, dirStyles.boltTop, { backgroundColor: c }]} />
-          <View style={[dirStyles.boltSegment, dirStyles.boltMid, { backgroundColor: c, opacity: 0.9 }]} />
-          <View style={[dirStyles.boltSegment, dirStyles.boltBottom, { backgroundColor: c }]} />
-        </View>
-      );
-    case 'leaderboard':
-      return (
-        <View style={dirStyles.podiumWrap}>
-          <View style={[dirStyles.podiumBar, dirStyles.podium2, { backgroundColor: c, opacity: 0.6 }]} />
-          <View style={[dirStyles.podiumBar, dirStyles.podium1, { backgroundColor: c }]} />
-          <View style={[dirStyles.podiumBar, dirStyles.podium3, { backgroundColor: c, opacity: 0.5 }]} />
-        </View>
-      );
-    case 'orbsignal':
-      return (
-        <View style={dirStyles.signalWrap}>
-          <View style={[dirStyles.signalArc, { borderColor: c }]} />
-          <View style={[dirStyles.signalArc, dirStyles.signalArc2, { borderColor: c, opacity: 0.6 }]} />
-          <View style={[dirStyles.signalArc, dirStyles.signalArc3, { borderColor: c, opacity: 0.3 }]} />
-        </View>
-      );
-    case 'stats':
-      return (
-        <View style={dirStyles.chartWrap}>
-          <View style={[dirStyles.chartBar, dirStyles.chart1, { backgroundColor: c }]} />
-          <View style={[dirStyles.chartBar, dirStyles.chart2, { backgroundColor: c, opacity: 0.8 }]} />
-          <View style={[dirStyles.chartBar, dirStyles.chart3, { backgroundColor: c, opacity: 0.5 }]} />
-        </View>
-      );
-    case 'knowledge':
-      return (
-        <View style={dirStyles.knowledgeWrap}>
-          <View style={[dirStyles.knowledgeBulb, { backgroundColor: c + '40' }]}>
-            <View style={[dirStyles.knowledgeGlow, { backgroundColor: c }]} />
-          </View>
-        </View>
-      );
-    case 'premium':
-      return (
-        <View style={[dirStyles.diamondWrap, { borderColor: c }]}>
-          <View style={[dirStyles.diamondInner, { backgroundColor: c }]} />
-        </View>
-      );
-    case 'compare-accounts':
-      return (
-        <View style={dirStyles.compareWrap}>
-          <View style={[dirStyles.compareBox, { borderColor: c }]} />
-          <View style={[dirStyles.compareBox, dirStyles.compareBoxPremium, { borderColor: c }]} />
-        </View>
-      );
-    case 'arena':
-      return (
-        <View style={dirStyles.podiumWrap}>
-          <View style={[dirStyles.podiumBar, dirStyles.podium2, { backgroundColor: c, opacity: 0.6 }]} />
-          <View style={[dirStyles.podiumBar, dirStyles.podium1, { backgroundColor: c }]} />
-          <View style={[dirStyles.podiumBar, dirStyles.podium3, { backgroundColor: c, opacity: 0.5 }]} />
-        </View>
-      );
-    case 'admin':
-      return (
-        <View style={[dirStyles.gearOuter, { borderColor: c }]}>
-          <Ionicons name="construct" size={18} color={c} />
-        </View>
-      );
-    case 'settings':
-      return (
-        <View style={[dirStyles.gearOuter, { borderColor: c }]}>
-          <View style={[dirStyles.gearInner, { borderColor: c, opacity: 0.7 }]} />
-        </View>
-      );
-    default:
-      return null;
-  }
+function TileCard({
+  item,
+  onPress,
+  colors,
+  isDark,
+  getDisplayName,
+}: {
+  item: DirectoryItem;
+  onPress: () => void;
+  colors: Record<string, string>;
+  isDark: boolean;
+  getDisplayName: (key: string, fallback: string) => string;
+}) {
+  const label = getDisplayName('dir_' + item.id, item.label);
+  return (
+    <Pressable
+      onPress={() => { safeHaptics.selectionAsync(); onPress(); }}
+      style={({ pressed }) => [tileStyles.card, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && tileStyles.cardPressed]}
+    >
+      <LinearGradient
+        colors={[item.color + '22', item.color + '08', 'transparent']}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      <View style={[tileStyles.iconWrap, { backgroundColor: item.color + (isDark ? '28' : '18') }]}>
+        <Ionicons name={item.icon} size={28} color={item.color} />
+      </View>
+      <Text style={[tileStyles.title, { color: colors.text }]} numberOfLines={1}>{label}</Text>
+      <Text style={[tileStyles.desc, { color: colors.textSecondary }]} numberOfLines={1}>{item.description}</Text>
+    </Pressable>
+  );
 }
 
-const dirStyles = StyleSheet.create({
-  mapWrap: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  mapGrid: { width: 28, height: 28, borderWidth: 1.5, borderRadius: 4, padding: 4, justifyContent: 'space-between' },
-  mapRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  mapRoad: { position: 'absolute', width: 4, height: 20, borderRadius: 2, transform: [{ rotate: '-45deg' }] },
-  orbOuter: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  orbMid: { width: 24, height: 24, borderRadius: 12, borderWidth: 2 },
-  orbInner: { width: 12, height: 12, borderRadius: 6 },
-  flagWrap: { width: 28, height: 32, flexDirection: 'row', alignItems: 'flex-end' },
-  flagPole: { width: 3, height: 28, borderRadius: 2 },
-  flagFlag: { width: 18, height: 12, borderWidth: 1.5, borderLeftWidth: 0, marginLeft: 2 },
-  walletWrap: { width: 36, height: 28, alignItems: 'center', justifyContent: 'center' },
-  coin: { width: 18, height: 10, borderRadius: 5, position: 'absolute' },
-  coin1: { left: 4, top: 2 },
-  coin2: { left: 10, top: 6 },
-  coin3: { left: 16, top: 10 },
-  bookmarkShape: { width: 20, height: 28, borderWidth: 2, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  bookmarkFold: { position: 'absolute', bottom: -2, left: 6, width: 8, height: 10, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
-  boltWrap: { width: 18, height: 26, alignItems: 'center', justifyContent: 'center' },
-  boltSegment: { width: 4, borderRadius: 2, position: 'absolute' },
-  boltTop: { height: 8, top: 0, transform: [{ rotate: '25deg' }] },
-  boltMid: { height: 10, top: 7, transform: [{ rotate: '-25deg' }] },
-  boltBottom: { height: 8, top: 16, transform: [{ rotate: '25deg' }] },
-  podiumWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 28, gap: 4 },
-  podiumBar: { width: 10, borderRadius: 2 },
-  podium1: { height: 22 },
-  podium2: { height: 14 },
-  podium3: { height: 10 },
-  signalWrap: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  signalArc: { position: 'absolute', width: 24, height: 24, borderRadius: 12, borderWidth: 1.5 },
-  signalArc2: { width: 32, height: 32, borderRadius: 16 },
-  signalArc3: { width: 40, height: 40, borderRadius: 20 },
-  spheresWrap: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  sphereDot: { position: 'absolute', width: 14, height: 14, borderRadius: 7 },
-  sphereDot2: { top: 2, left: 4 },
-  sphereDot3: { bottom: 2, right: 4 },
-  chartWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 24, gap: 6 },
-  chartBar: { width: 8, borderRadius: 2 },
-  chart1: { height: 20 },
-  chart2: { height: 14 },
-  knowledgeWrap: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
-  knowledgeBulb: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  knowledgeGlow: { width: 10, height: 10, borderRadius: 5 },
-  chart3: { height: 8 },
-  gearOuter: { width: 32, height: 32, borderRadius: 16, borderWidth: 2 },
-  gearInner: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, position: 'absolute' },
-  diamondWrap: { width: 32, height: 36, alignItems: 'center', justifyContent: 'center' },
-  diamondInner: { width: 16, height: 20, transform: [{ rotate: '45deg' }], borderRadius: 2 },
-  compareWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  compareBox: { width: 12, height: 16, borderRadius: 4, borderWidth: 1.5 },
-  compareBoxPremium: { borderWidth: 2, opacity: 0.9 },
-  pulseWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 24, gap: 4 },
-  pulseBar: { width: 6, borderRadius: 2 },
-  pulse1: { height: 12 },
-  pulse2: { height: 18 },
-  pulse3: { height: 10 },
+const tileStyles = StyleSheet.create({
+  card: {
+    alignSelf: 'stretch',
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  cardPressed: { opacity: 0.9 },
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  title: { fontSize: 14, fontWeight: '800', marginBottom: 2 },
+  desc: { fontSize: 11, opacity: 0.85 },
 });
 
 interface MasterDirectoryProps {
@@ -264,199 +158,213 @@ interface MasterDirectoryProps {
 
 export default function MasterDirectory({ visible, onClose }: MasterDirectoryProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
   const { flags } = useFlags();
   const isAdmin = isAdminEmail(user?.email);
-  const items = useMemo(() => {
-    const base = [...DIRECTORY_ITEMS];
-    if (flags.isOrbArenaEnabled) base.push(ARENA_ITEM);
+  const { isPartner } = useEffectiveTier();
+  const { getDisplayName } = useAdminLayout();
+  const [selectedSection, setSelectedSection] = useState<(typeof TAB_SECTION_IDS)[number]>('all');
+
+  const itemsBySection = useMemo(() => {
+    const base = DIRECTORY_ITEMS.filter((item) => isPageVisible(item.id, flags));
+    if (flags.isOrbOpsEnabled) base.push(ORBOPS_ITEM);
+    if (flags.isOrbSwipeEnabled) base.push(ORBSWIPE_ITEM);
+    if (isPartner && flags.isOrbBountyEnabled) base.push(BOUNTY_ITEM);
+    if (isPartner && flags.isOrbIntentEnabled) base.push(INTENT_ITEM);
+    if (flags.isOrbPassEnabled) base.push(ORBPASS_ITEM);
+    if (isPartner && flags.isOrbFeedEnabled) base.push(FEED_ITEM);
+    if (isPartner && flags.isOrbOpportunitiesEnabled) base.push(OPPORTUNITIES_ITEM);
     if (isAdmin) base.push(ADMIN_ITEM);
-    return base;
-  }, [isAdmin, flags.isOrbArenaEnabled]);
+    const bySection: Record<string, DirectoryItem[]> = {};
+    SECTION_IDS.forEach((sid) => { bySection[sid] = []; });
+    base.forEach((item) => {
+      const sid = ITEM_SECTION[item.id] ?? 'discover';
+      if (bySection[sid]) bySection[sid].push(item);
+    });
+    const sortByLabel = (a: DirectoryItem, b: DirectoryItem) =>
+      (getDisplayName('dir_' + a.id, a.label)).localeCompare(getDisplayName('dir_' + b.id, b.label), undefined, { sensitivity: 'base' });
+    SECTION_IDS.forEach((sid) => { bySection[sid].sort(sortByLabel); });
+    bySection[ALL_SECTION_ID] = base.slice().sort(sortByLabel);
+    return bySection;
+  }, [isAdmin, isPartner, flags.isOrbOpsEnabled, flags.isOrbSwipeEnabled, flags.isOrbBountyEnabled, flags.isOrbIntentEnabled, flags.isOrbPassEnabled, flags.isOrbFeedEnabled, flags.isOrbOpportunitiesEnabled, flags, getDisplayName]);
+
+  const currentItems = itemsBySection[selectedSection] ?? [];
 
   const handlePress = (route: string) => {
     onClose();
-    setTimeout(() => {
-        router.push(route as any);
-    }, 100);
+    setTimeout(() => router.push(route as any), 120);
   };
 
-  return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+  const overlayOpacity = isDark ? 0.7 : 0.5;
 
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.header}>
-            <View style={styles.headerBrand}>
-              <Image
-                source={require('../assets/images/icon.png')}
-                style={styles.headerLogo}
-                resizeMode="contain"
-              />
+  if (!visible) return null;
+
+  return (
+    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose} statusBarTranslucent>
+      <View style={[styles.container, { backgroundColor: `rgba(0,0,0,${overlayOpacity})` }]}>
+        <BlurView intensity={isDark ? 90 : 60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+
+        <View
+          style={[
+            styles.sheet,
+            {
+              backgroundColor: colors.background,
+              paddingTop: Math.max(insets.top, 10),
+              paddingBottom: insets.bottom + 20,
+              paddingLeft: insets.left + 16,
+              paddingRight: insets.right + 16,
+            },
+          ]}
+        >
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <View style={styles.headerLeft}>
+              <View style={[styles.logoWrap, { backgroundColor: (SECTION_ACCENT.core || colors.primary) + '25', borderColor: (SECTION_ACCENT.core || colors.primary) + '50' }]}>
+                <OrbTapLogoMark variant="small" width={28} height={24} />
+              </View>
               <View>
-                <Text style={styles.title}>OrbTap</Text>
-                <Text style={styles.subtitle}>Master Directory</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Master Directory</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Go anywhere in OrbTap</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={28} color="#FFF" />
+            <TouchableOpacity
+              onPress={() => { safeHaptics.selectionAsync(); onClose(); }}
+              style={[styles.closeBtn, { backgroundColor: colors.surfaceHighlight }]}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close" size={22} color={colors.text} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <View style={styles.gridContainer}>
-              {items.map((item) => (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pillsWrap}
+            style={styles.pillsScroll}
+          >
+            {TAB_SECTION_IDS.map((sid) => {
+              const count = (itemsBySection[sid] ?? []).length;
+              if (count === 0 && sid !== ALL_SECTION_ID) return null;
+              const accent = sid === ALL_SECTION_ID ? (SECTION_ACCENT.core || colors.primary) : SECTION_ACCENT[sid];
+              const isSelected = selectedSection === sid;
+              return (
                 <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.88}
-                  onPress={() => handlePress(item.route)}
-                  style={styles.cardOuter}
+                  key={sid}
+                  onPress={() => { safeHaptics.selectionAsync(); setSelectedSection(sid); }}
+                  activeOpacity={0.85}
+                  style={[styles.pill, { backgroundColor: isSelected ? accent + '22' : colors.surface, borderColor: isSelected ? accent : colors.border }]}
                 >
-                  <LinearGradient
-                    colors={[item.color + '28', item.color + '08', 'transparent']}
-                    style={[styles.cardGradient, { borderLeftColor: item.color }]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <View style={styles.cardVisualRow}>
-                      <View style={[styles.cardVisual, { backgroundColor: item.color + '22' }]}>
-                        <DirectoryVisual id={item.id} color={item.color} />
-                        <View style={[styles.iconBadge, { backgroundColor: item.color + '35' }]}>
-                          <Ionicons name={item.icon} size={24} color={item.color} />
-                        </View>
-                      </View>
-                      <View style={styles.cardContent}>
-                        <Text style={[styles.cardTitle, { color: '#FFF' }]}>{item.label}</Text>
-                        <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-                    </View>
-                  </LinearGradient>
+                  <Text style={[styles.pillText, { color: isSelected ? accent : colors.textSecondary }]}>{SECTION_LABELS[sid]}</Text>
+                  <View style={[styles.pillBadge, { backgroundColor: isSelected ? accent + '40' : colors.surfaceHighlight }]}>
+                    <Text style={[styles.pillBadgeText, { color: isSelected ? accent : colors.textSecondary }]}>{count}</Text>
+                  </View>
                 </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.footerText}>System Version 1.0.0 • Stable</Text>
+              );
+            })}
           </ScrollView>
-        </SafeAreaView>
+
+          <ScrollView
+            contentContainerStyle={styles.gridContent}
+            showsVerticalScrollIndicator={false}
+            key={selectedSection}
+          >
+            <Animated.View entering={FadeIn.duration(200)} style={styles.grid}>
+              {currentItems.map((item, index) => (
+                <Animated.View
+                  key={item.id}
+                  entering={FadeInDown.delay(index * 40).duration(280)}
+                  style={styles.gridItem}
+                >
+                  <TileCard
+                    item={item}
+                    onPress={() => handlePress(item.route)}
+                    colors={colors}
+                    isDark={isDark}
+                    getDisplayName={getDisplayName}
+                  />
+                </Animated.View>
+              ))}
+            </Animated.View>
+          </ScrollView>
+
+          <Text style={[styles.footer, { color: colors.textSecondary }]}>OrbTap · Hold center orb 1s to open</Text>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-  },
-  safeArea: {
-    flex: 1,
-    paddingTop: StatusBar.currentHeight || 20,
-  },
-  scrollContent: {
-    paddingBottom: 40,
+  container: { flex: 1, justifyContent: 'flex-end' },
+  sheet: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+    maxHeight: '90%',
+    ...(Platform.OS !== 'web' ? { shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 12 } : {}),
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingBottom: 20,
-    paddingTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
-  headerBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerLogo: {
-    width: 44,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logoWrap: {
+    width: 40,
     height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFF',
-    letterSpacing: 1,
+  title: { fontSize: 20, fontWeight: '900', letterSpacing: -0.3 },
+  subtitle: { fontSize: 12, marginTop: 2, fontWeight: '600', opacity: 0.85 },
+  closeBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#888',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginTop: 4,
-  },
-  closeButton: {
-    padding: 8,
-    backgroundColor: '#333',
-    borderRadius: 20,
-  },
-  gridContainer: {
-    padding: 20,
-    gap: 16,
-  },
-  cardOuter: {
-    width: '100%',
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  cardGradient: {
-    borderRadius: 15,
-    padding: 14,
-    borderLeftWidth: 4,
-  },
-  cardVisualRow: {
+  pillsScroll: { marginTop: 12, flexGrow: 0 },
+  pillsWrap: { paddingRight: 24, gap: 10, paddingVertical: 8, alignItems: 'center' },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-  },
-  cardVisual: {
-    width: 56,
-    height: 56,
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 14,
+    borderWidth: 1.5,
+    minHeight: 44,
+  },
+  pillText: { fontSize: 13, fontWeight: '800', lineHeight: 18 },
+  pillBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    paddingHorizontal: 6,
   },
-  iconBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+  pillBadgeText: { fontSize: 11, fontWeight: '800' },
+  gridContent: { paddingTop: 16, paddingBottom: 24 },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: CARD_GAP,
+    justifyContent: 'space-between',
   },
-  cardContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  cardDesc: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 16,
-  },
-  footerText: {
+  gridItem: { width: '48%' },
+  footer: {
     textAlign: 'center',
-    color: '#444',
-    fontSize: 12,
-    marginTop: 20,
-    fontFamily: 'Courier',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 8,
+    letterSpacing: 0.5,
   },
 });
