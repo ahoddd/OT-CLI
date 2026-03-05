@@ -8,7 +8,15 @@
     "close": "Fermer",
     "loading": "Chargement…",
     "error": "Une erreur s'est produite.",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "logout": "Déconnexion",
+    "logoutConfirm": "Retour à la connexion ?",
+    "delete": "Supprimer",
+    "deleteConfirm": "Es-tu sûr ?",
+    "saving": "Enregistrement…",
+    "reject": "Refuser",
+    "rejected": "Refusé",
+    "ok": "OK"
   },
   "auth": {
     "signIn": "Connexion",
@@ -73,7 +81,12 @@
     "imAtLeast": "J'ai au moins {{age}} ans.",
     "terms": "Conditions",
     "privacy": "Confidentialité",
-    "iAgreeTo": "J'accepte les "
+    "iAgreeTo": "J'accepte les ",
+    "signInWithGoogle": "Continuer avec Google",
+    "signInWithApple": "Continuer avec Apple",
+    "signUpWithGoogle": "S'inscrire avec Google",
+    "signUpWithApple": "S'inscrire avec Apple",
+    "orContinueWithEmail": "ou continuer avec l'e-mail"
   },
   "home": {
     "tonight": "Ce soir",
@@ -283,7 +296,11 @@
     "restartNow": "Redémarrer",
     "later": "Plus tard",
     "languageUpdatedTitle": "Langue mise à jour",
-    "languageUpdatedMessage": "Redémarre l'app pour voir la nouvelle langue partout."
+    "languageUpdatedMessage": "Redémarre l'app pour voir la nouvelle langue partout.",
+    "photoPermissionTitle": "Accès photo",
+    "photoPermissionMessage": "Autorise l'accès aux photos pour définir une photo de profil.",
+    "photoModerationRejected": "Photo non autorisée",
+    "uploadFailed": "Échec du téléchargement"
   },
   "onboarding": {
     "languageTitle": "Choisis ta langue",
@@ -338,5 +355,233 @@
     "guidelines": "Règles de la communauté",
     "acceptableUse": "Politique d'usage acceptable",
     "help": "Centre d'aide"
+  },
+  "profile": {
+    "shareProfile": "Partager le profil",
+    "editProfile": "Modifier le profil",
+    "partner": "PARTENAIRE",
+    "best": "Meilleur",
+    "weeklyWins": "Victoires hebdo",
+    "visits": "visites",
+    "level": "Niveau",
+    "learn": "APPRENDRE",
+    "achievements": "Succès",
+    "inviteFriends": "Inviter des amis",
+    "you": "Toi"
+  },
+  "scan": {
+    "scanWorksInApp": "Le scan fonctionne dans l'app",
+    "scanWorksSub": "Utilise l'app OrbTap sur ton téléphone pour scanner les QR partenaires et échanger des avantages.",
+    "appStore": "App Store",
+    "googlePlay": "Google Play",
+    "allowCamera": "Autoriser la caméra",
+    "deny": "Refuser",
+    "pointAtQR": "Vise le QR code du partenaire",
+    "redeemPerk": "Échanger un avantage",
+    "earnOT": "Gagner des OT",
+    "cameraNotOpened": "La caméra n'a pas été ouverte. Appuie ci-dessous pour réessayer quand tu es prêt à scanner.",
+    "openCamera": "Ouvrir la caméra",
+    "openCameraTitle": "Ouvrir la caméra pour scanner ?",
+    "openCameraBody": "OrbTap souhaite utiliser ta caméra pour scanner les QR partenaires et échanger des avantages.",
+    "rememberMyChoice": "Se souvenir de mon choix pour les prochains scans",
+    "requestPermission": "Demander l'autorisation",
+    "deniedPrompt": "Tu as choisi de ne pas utiliser la caméra. Appuie ci-dessous pour l'ouvrir quand tu es prêt.",
+    "requestingPermission": "Demande d'autorisation…",
+    "needsCamera": "OrbTap a besoin de la caméra pour scanner les QR partenaires."
+  },
+  "missions": {
+    "missions": "Missions",
+    "allDay": "Toute la journée",
+    "allDaySub": "3 missions · petit-déj, déj, dîner",
+    "lunchDinner": "Déj et dîner",
+    "lunchDinnerSub": "2 missions · un check-in chacun",
+    "dinner": "Dîner",
+    "dinnerSub": "1 mission · un check-in",
+    "breakfast": "Petit-déjeuner",
+    "lunch": "Déjeuner",
+    "expired": "Expiré",
+    "due": "À faire",
+    "left": "restantes",
+    "generate": "Générer",
+    "complete": "Terminer",
+    "todayMissions": "Missions du jour",
+    "noMissions": "Pas encore de missions",
+    "tapToGenerate": "Appuie pour générer les missions du jour"
+  },
+  "leaderboard": {
+    "leaderboard": "Classement",
+    "explorers": "Explorateurs",
+    "partners": "Partenaires",
+    "spheres": "Sphères",
+    "streaks": "Séries",
+    "stats": "Stats",
+    "missions": "Missions",
+    "orbVote": "OrbVote",
+    "sharePrompt": "Tu montes ? Partage ton rang et invite des amis.",
+    "shareYourRank": "Partager ton rang",
+    "you": "Toi",
+    "perk": "avantage",
+    "perks": "avantages"
+  },
+  "stampCard": {
+    "searchPlaceholder": "Rechercher par programme ou partenaire…"
+  },
+  "bookmarks": {
+    "bookmarks": "Favoris",
+    "savedPartners": "Partenaires enregistrés",
+    "savedPerks": "Avantages enregistrés",
+    "subtitle": "Partenaires et avantages enregistrés — touche pour ouvrir, ré-enregistrer pour retirer.",
+    "empty": "Rien enregistré",
+    "emptySub": "Enregistre des partenaires et avantages depuis la carte ou la liste.",
+    "savePartnersPerks": "Enregistrer partenaires et avantages",
+    "savePartnersPerksSub": "Touche l'icône favori sur un partenaire ou avantage pour l'enregistrer ici.",
+    "exploreMap": "Explorer la carte",
+    "dailyMissions": "Missions quotidiennes",
+    "unlockUnlimitedFollows": "Débloquer les suivis illimités"
+  },
+  "knowledge": {
+    "knowledge": "Connaissances",
+    "learnMore": "En savoir plus",
+    "empty": "Pas encore d'articles"
+  },
+  "stats": {
+    "stats": "Stats",
+    "yourImpact": "Ton impact",
+    "empty": "Pas encore de stats"
+  },
+  "pulse": {
+    "pulse": "Pulse",
+    "liveDrops": "Drops en direct",
+    "reserve": "Réserver",
+    "empty": "Pas de drops en direct"
+  },
+  "premium": {
+    "premium": "Premium",
+    "unlockMore": "Débloquer plus",
+    "upgrade": "Améliorer"
+  },
+  "notFound": {
+    "title": "Introuvable",
+    "subtitle": "Cette page n'existe pas ou a été supprimée.",
+    "goHome": "Retour à l'accueil"
+  },
+  "notifications": {
+    "notifications": "Notifications",
+    "empty": "Pas encore de notifications"
+  },
+  "feed": {
+    "feed": "Fil",
+    "empty": "Pas encore de publications"
+  },
+  "partners": {
+    "partners": "Partenaires",
+    "browse": "Parcourir les partenaires",
+    "empty": "Aucun partenaire à proximité"
+  },
+  "support": {
+    "support": "Support",
+    "helpCenter": "Centre d'aide",
+    "contact": "Nous contacter"
+  },
+  "report": {
+    "title": "Signaler",
+    "reporting": "Signaler : {{name}}",
+    "reasonLabel": "Motif du signalement",
+    "placeholder": "Décris le problème…",
+    "submitReport": "Envoyer le signalement",
+    "thankYouTitle": "Merci pour ton signalement",
+    "thankYouMessage": "Nous l'avons reçu et l'examinerons sous 24 h. Merci de nous aider à garder OrbTap sûr."
+  },
+  "bounty": {
+    "title": "OrbBounty™",
+    "feed": "Fil",
+    "mine": "Mes Bounties",
+    "inbox": "Boîte de réception",
+    "post": "Publier",
+    "offTitle": "OrbBounty est désactivé",
+    "offSub": "Active dans le Hub Admin.",
+    "heroTitle": "Publie ce que tu veux. Les partenaires rivalisent pour toi.",
+    "heroDesc": "Crée une bounty avec ton budget et ta fenêtre. Les pros enchérissent. Tu en acceptes une, tu la réalises sur place et tu obtiens une carte partageable.",
+    "heroTrust": "Réalisation vérifiée · Vraies offres",
+    "emptyFeed": "Aucune bounty active. Publie et laisse les partenaires rivaliser.",
+    "emptyMine": "Tu n'as pas encore publié de bounty.",
+    "emptyInbox": "Les bounties sur lesquelles tu peux enchérir apparaîtront ici.",
+    "searchPlaceholder": "Rechercher des bounties…",
+    "open": "Ouvert",
+    "locked": "Verrouillé",
+    "fulfilled": "Réalisé",
+    "expired": "Expiré",
+    "cancelled": "Annulé"
+  },
+  "orbpilot": {
+    "scanTitle": "Scanner QR",
+    "scanFailed": "Échec du scan",
+    "scanFailedMessage": "Impossible de vérifier ce QR. Réessaie.",
+    "tryAgain": "Réessayer",
+    "error": "Erreur",
+    "errorMessage": "Une erreur s'est produite. Vérifie ta connexion et réessaie.",
+    "retry": "Réessayer"
+  },
+  "admin": {
+    "admin": "Admin",
+    "dashboard": "Tableau de bord"
+  },
+  "partner": {
+    "dashboard": "Tableau de bord",
+    "perks": "Avantages",
+    "polls": "Sondages",
+    "feed": "Fil",
+    "settings": "Paramètres"
+  },
+  "workOrders": {
+    "title": "OrbWork Orders™",
+    "requestWork": "Demander un travail",
+    "myRequests": "Mes demandes",
+    "partnerInbox": "Boîte partenaire",
+    "offTitle": "OrbOps est désactivé",
+    "offSub": "Active dans le Hub Admin.",
+    "heroTitle": "Demande un travail, suis-le jusqu'au bout",
+    "heroDesc": "En tant que client : lance une demande depuis une page partenaire. En tant que partenaire : reçois les demandes, accepte, planifie et complète avec preuve. Tous synchronisés.",
+    "heroTrust": "Étapes vérifiées · Chronologie claire",
+    "loading": "Chargement…",
+    "emptyTitle": "Pas encore de commandes",
+    "emptyCustomer": "Demande un travail depuis une page partenaire (Demander un travail).",
+    "emptyPartner": "Les demandes entrantes apparaîtront ici.",
+    "status_REQUESTED": "Demandé",
+    "status_CLARIFYING": "Clarification",
+    "status_ACCEPTED": "Accepté",
+    "status_SCHEDULED": "Planifié",
+    "status_EN_ROUTE": "En route",
+    "status_STARTED": "Commencé",
+    "status_MIDPOINT_PROOF": "En cours",
+    "status_COMPLETED_PENDING_APPROVAL": "En attente de ton approbation",
+    "status_COMPLETED": "Terminé",
+    "status_DISPUTED": "En litige",
+    "status_CANCELED": "Annulé"
+  },
+  "orbpass": {
+    "title": "OrbPass™",
+    "offTitle": "OrbPass est désactivé",
+    "offSub": "Active dans le Hub Admin.",
+    "loading": "Chargement…",
+    "retry": "Réessayer",
+    "yourTier": "Ton niveau : {{tier}}",
+    "orbPassEnabled": "OrbPass activé",
+    "notEligible": "OrbPass est un avantage Premium. Améliore pour débloquer des avantages chez les partenaires.",
+    "sampleOffers": "Exemples d'offres à débloquer",
+    "withOrbPassYouGet": "Avec OrbPass tu as :",
+    "benefit1": "Échanges mensuels chez les partenaires participants",
+    "benefit2": "Offres et réductions réservées aux membres",
+    "benefit3": "Échange en un tap avec PIN ou QR sur place",
+    "benefit4": "Soutiens les commerces locaux tout en économisant",
+    "benefit5": "Historique d'échanges et boîte partenaire (pour les partenaires)",
+    "seeAllPlans": "Voir tous les plans",
+    "viewOrbTapPlans": "Voir les plans OrbTap",
+    "nearbyOffers": "Offres à proximité",
+    "viewMap": "Voir la carte",
+    "redemptionsRemaining": "{{remaining}}/{{total}} échanges restants ce mois",
+    "noOffersInArea": "Pas encore d'offres OrbPass dans ta zone. Les partenaires peuvent activer OrbPass dans leurs paramètres.",
+    "viewNearbyOnMap": "Voir les partenaires à proximité sur la carte",
+    "value": "Valeur : ${{value}}"
   }
 }

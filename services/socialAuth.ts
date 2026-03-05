@@ -1,11 +1,14 @@
 /**
  * OrbTap social sign-in — Google and Apple.
- * Web: Firebase signInWithPopup. Native: expo-auth-session (Google) and expo-apple-authentication (Apple, iOS).
+ * Web: Firebase signInWithPopup (Google), signInWithRedirect (Apple — handler: https://orbtap.firebaseapp.com/__/auth/handler).
+ * Native: expo-auth-session (Google) and expo-apple-authentication (Apple, iOS).
  */
 
 import { Platform } from 'react-native';
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithCredential,
   GoogleAuthProvider,
   OAuthProvider,
@@ -80,7 +83,9 @@ export async function signInWithGoogle(): Promise<SocialAuthResult> {
 
 /**
  * Sign in with Apple.
- * Web: signInWithPopup with OAuthProvider('apple.com') if configured. Native iOS: expo-apple-authentication.
+ * Web: signInWithRedirect (Firebase handler https://orbtap.firebaseapp.com/__/auth/handler).
+ * Call handleAppleRedirectResult() on app/login load to complete the flow after redirect.
+ * Native iOS: expo-apple-authentication.
  * Android: not supported (returns error or we hide the button).
  */
 export async function signInWithApple(): Promise<SocialAuthResult> {
@@ -89,8 +94,8 @@ export async function signInWithApple(): Promise<SocialAuthResult> {
       const provider = new OAuthProvider('apple.com');
       provider.addScope('email');
       provider.addScope('name');
-      const credential = await signInWithPopup(auth, provider);
-      return { success: true, credential };
+      await signInWithRedirect(auth, provider);
+      return { success: false, message: 'Redirecting to Apple…' };
     }
 
     if (Platform.OS !== 'ios') {
@@ -169,4 +174,19 @@ export async function ensureSocialUserProfile(credential: UserCredential): Promi
   if (snap.exists()) return;
   const { initializeUserProfileCallable } = await import('./emailVerification');
   await initializeUserProfileCallable(displayName, null);
+}
+
+/**
+ * On web: call once when login/signup screen mounts to handle return from Apple signInWithRedirect.
+ * Firebase redirects to your app after Apple auth; this completes the sign-in.
+ * Returns the UserCredential if we landed from an Apple redirect, otherwise null.
+ */
+export async function handleAppleRedirectResult(): Promise<UserCredential | null> {
+  if (Platform.OS !== 'web') return null;
+  try {
+    const result = await getRedirectResult(auth);
+    return result ?? null;
+  } catch {
+    return null;
+  }
 }

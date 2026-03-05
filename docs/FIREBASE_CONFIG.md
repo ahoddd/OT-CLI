@@ -4,21 +4,11 @@ Reference config for the OrbTap project. Use this for local/dev; in production p
 
 ## Project config (client)
 
-**Do not put API keys in source.** Use environment variables only. See `.env.example`.
+**Do not put API keys or project IDs in source.** All values must come from environment variables (`.env` or EAS secrets). See `.env.example`. This avoids store review flags and allows key rotation without code changes.
 
-```js
-// firebaseConfig.ts reads from process.env; example shape:
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,  // required; set in .env
-  authDomain: "orbtap.firebaseapp.com",
-  projectId: "orbtap",
-  storageBucket: "orbtap.firebasestorage.app",
-  messagingSenderId: "850131821354",
-  appId: "1:850131821354:web:2bedd32c5aeecf74e97453"
-};
-```
-
-- **Project ID:** `orbtap`
+- **Required env vars:** `EXPO_PUBLIC_FIREBASE_API_KEY`, `EXPO_PUBLIC_FIREBASE_PROJECT_ID`, `EXPO_PUBLIC_FIREBASE_APP_ID`
+- **Optional:** `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`, `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`, `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` (authDomain/storageBucket default from projectId if unset)
+- **Project ID:** set via `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
 - **Hosting (if used):** `https://orbtap.web.app`
 - **API base (Cloud Functions):** `https://us-central1-orbtap.cloudfunctions.net` or your deployed Functions URL
 
@@ -45,7 +35,7 @@ You can override config with `EXPO_PUBLIC_*` so the same codebase can point at d
 - `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `EXPO_PUBLIC_FIREBASE_APP_ID`
 
-If these are set, `firebaseConfig.ts` uses them; otherwise it uses the default config above.
+`firebaseConfig.ts` requires API key, project ID, and app ID from env; no hardcoded fallbacks so builds stay store-safe.
 
 ## Firestore rules and indexes
 
@@ -72,6 +62,13 @@ cd functions && npm run build && cd .. && firebase deploy --only functions
 ```
 
 Full steps and one-off deploys: **[DEPLOY_CLOUD_FUNCTIONS.md](./DEPLOY_CLOUD_FUNCTIONS.md)**.
+
+## Apple and Google sign-in
+
+1. **Firebase Console** — [Authentication → Sign-in method](https://console.firebase.google.com/project/orbtap/authentication/providers): enable **Google** and **Apple**.
+2. **Auth domain** — The OAuth handler URL is `https://<authDomain>/__/auth/handler`. For this project that is **https://orbtap.firebaseapp.com/__/auth/handler**. Set `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=orbtap.firebaseapp.com` in `.env` if you override other Firebase env vars.
+3. **Google (native)** — Set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `.env` to the Web client ID from Firebase (Google provider config). For Expo native builds, add the Expo redirect URI to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → your OAuth 2.0 Web client → Authorized redirect URIs: `https://auth.expo.io/@YOUR_EXPO_USERNAME/orbtap`.
+4. **Apple (web)** — In [Apple Developer](https://developer.apple.com/account) → Sign in with Apple → Configure → Return URLs, add `https://orbtap.firebaseapp.com/__/auth/handler`. The app uses `signInWithRedirect` for web Apple; after redirect, the login/signup screen completes sign-in via `getRedirectResult`.
 
 ## Login fails after changing API key
 

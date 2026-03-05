@@ -22,7 +22,7 @@ import { StampCardStack } from '../../components/StampCardStack';
 import { StampCardModal } from '../../components/StampCardModal';
 import { COLORS } from '../../constants/Colors';
 import { PARTNER_TIER_COLORS } from '../../constants/PartnerTiers';
-import { SPACE, RADIUS } from '../../constants/DesignTokens';
+import { SPACE, RADIUS, TYPE, SCROLL_CONTENT } from '../../constants/DesignTokens';
 import { DEFAULT_ORBINOMICS_POLICY, LEDGER_REASON } from '../../constants/OrbinomicsPolicy';
 import { usePartners } from '../../context/PartnersContext';
 import { useNextPerkGoal } from '../../hooks/useNextPerkGoal';
@@ -272,7 +272,7 @@ export default function WalletScreen() {
         <WalletDopamineStrip balance={balance} history={safeHistory} verifiedActions={verifiedActions ?? []} colors={colors} themeGold={themeGold} loading={walletLoading} textStyles={textStyles} />
 
         {/* Points-to-perk ladder — Starbucks Stars style (frosted) */}
-        <View style={[styles.pointsLadderCard, styles.pointsLadderGlass, { borderColor: colors.border }]}>
+        <View style={[styles.pointsLadderCard, styles.pointsLadderGlass, { borderColor: colors.border }, colors.cardGlow && { shadowColor: colors.cardGlow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.9, shadowRadius: 14, elevation: 6 }]}>
           {Platform.OS !== 'web' && (
             <BlurView intensity={isDark ? 50 : 56} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
           )}
@@ -377,7 +377,7 @@ export default function WalletScreen() {
 
         {/* ——— Reward Locker (Stamp Cards) ——— */}
         {stampCardsEnabled && rewardLocker.length > 0 && (
-          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+          <View style={{ paddingHorizontal: SPACE.base, marginBottom: SPACE.md }}>
             <RewardLockerSection items={rewardLocker} />
           </View>
         )}
@@ -442,7 +442,7 @@ export default function WalletScreen() {
 
         {/* ——— OrbBank™ Goal Jar tile ——— */}
         {flags.isOrbBankEnabled && (
-          <View style={{ paddingHorizontal: 16, marginBottom: 4 }}>
+          <View style={{ paddingHorizontal: SPACE.base, marginBottom: SPACE.xs }}>
             <OrbBankTile
               onTopUp={() => router.push('/orbbank/topup')}
               onViewJars={() => router.push('/orbbank')}
@@ -815,14 +815,14 @@ const ActionButton = ({ icon, label, onPress, colors, isDark }: any) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: SPACE.base, paddingBottom: 100 },
+  content: { ...SCROLL_CONTENT, paddingBottom: 100 },
   header: { marginBottom: SPACE.md },
   headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerBrandWrap: { marginRight: SPACE.md },
   headerTextWrap: { flex: 1, minWidth: 0 },
-  headerTitle: { fontSize: 22, fontWeight: '900', letterSpacing: 0.8 },
-  headerSub: { fontSize: 12, marginTop: 4 },
-  headerTrust: { fontSize: 10, fontWeight: '600', marginTop: 2, opacity: 0.9 },
+  headerTitle: { fontSize: TYPE.title, fontWeight: '900', letterSpacing: 0.8 },
+  headerSub: { fontSize: TYPE.caption, marginTop: SPACE.xs },
+  headerTrust: { fontSize: TYPE.label, fontWeight: '600', marginTop: 2, opacity: 0.9 },
   headerIconBtn: { width: 44, height: 44, borderRadius: RADIUS.full, justifyContent: 'center', alignItems: 'center', borderWidth: 1, marginLeft: SPACE.md },
   scanBtn: { width: 44, height: 44, borderRadius: RADIUS.full, justifyContent: 'center', alignItems: 'center', borderWidth: 1, marginLeft: SPACE.sm },
   cardContainer: { alignItems: 'center', marginBottom: SPACE.xxl },
@@ -836,11 +836,11 @@ const styles = StyleSheet.create({
   },
   pointsLadderGlass: {},
   pointsLadderContent: { padding: SPACE.md },
-  pointsLadderTitle: { fontSize: 12, fontWeight: '800', marginBottom: SPACE.sm },
+  pointsLadderTitle: { fontSize: TYPE.caption, fontWeight: '800', marginBottom: SPACE.sm },
   pointsLadderRow: { flexDirection: 'row', justifyContent: 'space-around' },
   pointsLadderItem: { flex: 1, alignItems: 'center', paddingVertical: SPACE.xs },
-  pointsLadderOT: { fontSize: 13, fontWeight: '800' },
-  pointsLadderLabel: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+  pointsLadderOT: { fontSize: TYPE.label, fontWeight: '800' },
+  pointsLadderLabel: { fontSize: TYPE.caption, fontWeight: '600', marginTop: 2 },
   milestoneTrack: { height: 6, borderRadius: 3, marginTop: 12, marginBottom: 4, overflow: 'visible', position: 'relative' },
   milestoneFill: { height: 6, borderRadius: 3, position: 'absolute', top: 0, left: 0 },
   milestoneDot: { position: 'absolute', top: -3, width: 12, height: 12, borderRadius: 6, marginLeft: -6 },
@@ -853,11 +853,11 @@ const styles = StyleSheet.create({
     padding: SPACE.md,
   },
   activePowerUpsHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
-  activePowerUpsTitle: { fontSize: 14, fontWeight: '800' },
+  activePowerUpsTitle: { fontSize: TYPE.label, fontWeight: '800' },
   activePowerUpRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: SPACE.sm, borderTopWidth: 1 },
-  activePowerUpLabel: { fontSize: 13, fontWeight: '600' },
-  activePowerUpTimer: { fontSize: 12, fontWeight: '700' },
-  activePowerUpEmpty: { fontSize: 13 },
+  activePowerUpLabel: { fontSize: TYPE.label, fontWeight: '600' },
+  activePowerUpTimer: { fontSize: TYPE.caption, fontWeight: '700' },
+  activePowerUpEmpty: { fontSize: TYPE.label },
   earnMoreStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -870,8 +870,8 @@ const styles = StyleSheet.create({
     gap: SPACE.md,
   },
   earnMoreStripText: { flex: 1, minWidth: 0 },
-  earnMoreStripTitle: { fontSize: 15, fontWeight: '700' },
-  earnMoreStripSub: { fontSize: 12, marginTop: 2 },
+  earnMoreStripTitle: { fontSize: TYPE.body, fontWeight: '700' },
+  earnMoreStripSub: { fontSize: TYPE.caption, marginTop: 2 },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: SPACE.xs, paddingHorizontal: SPACE.md },
   actionsHint: { fontSize: 10, textAlign: 'center', marginBottom: SPACE.xxl },
   actionBtn: { alignItems: 'center', gap: SPACE.sm },
@@ -895,27 +895,27 @@ const styles = StyleSheet.create({
   powerUpsList: { marginTop: SPACE.sm },
   powerUpRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: SPACE.lg, paddingHorizontal: 4, borderBottomWidth: 1 },
   powerUpInfo: { flex: 1 },
-  powerUpName: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
-  powerUpCost: { fontSize: 12 },
+  powerUpName: { fontSize: TYPE.label, fontWeight: '700', marginBottom: 2 },
+  powerUpCost: { fontSize: TYPE.caption },
   powerUpBtn: { paddingHorizontal: SPACE.base, paddingVertical: SPACE.sm, borderRadius: RADIUS.sm },
-  powerUpBtnText: { fontSize: 13, fontWeight: '700' },
+  powerUpBtnText: { fontSize: TYPE.label, fontWeight: '700' },
   receiptsList: { marginTop: SPACE.sm },
   receiptRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: SPACE.lg, paddingHorizontal: 4, borderBottomWidth: 1 },
   receiptInfo: { flex: 1 },
-  receiptPartner: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  receiptPartner: { fontSize: TYPE.label, fontWeight: '700', marginBottom: 2 },
   receiptDate: { fontSize: 11 },
   receiptRight: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   streakCard: { padding: SPACE.base },
   streakRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   streakVal: { fontSize: 15, fontWeight: '700' },
-  streakBest: { fontSize: 12 },
+  streakBest: { fontSize: TYPE.caption },
   historyList: { marginTop: SPACE.sm },
-  emptyStateText: { padding: SPACE.lg, textAlign: 'center', fontStyle: 'italic', fontSize: 13 },
+  emptyStateText: { padding: SPACE.lg, textAlign: 'center', fontStyle: 'italic', fontSize: TYPE.label },
   historyItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: SPACE.lg, paddingHorizontal: 4, borderBottomWidth: 1 },
   iconBox: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: SPACE.base },
   historyInfo: { flex: 1 },
-  historyTitle: { fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
-  historyDate: { fontSize: 10 },
+  historyTitle: { fontWeight: 'bold', fontSize: TYPE.label, marginBottom: 2 },
+  historyDate: { fontSize: TYPE.label },
   historyAmount: { fontWeight: 'bold', fontSize: 14 },
   upgradeCtaCardWrap: { marginHorizontal: SPACE.base, marginBottom: SPACE.base },
   upgradeCtaCard: {

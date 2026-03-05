@@ -18,8 +18,8 @@ import { PrimaryButton, PreAuthInput } from '../../components/preauth';
 import { useWebTitle } from '../../hooks/useWebTitle';
 import { useI18n } from '../../context/I18nContext';
 import { safeHaptics, Haptics } from '../../utils/safeHaptics';
-import { signInWithGoogle, signInWithApple, ensureSocialUserProfile, isGoogleSignInAvailable, isAppleSignInAvailable } from '../../services/socialAuth';
-import { HERO_STAGGER_MS } from '../../constants/DesignTokens';
+import { signInWithGoogle, signInWithApple, ensureSocialUserProfile, handleAppleRedirectResult, isGoogleSignInAvailable, isAppleSignInAvailable } from '../../services/socialAuth';
+import { HERO_STAGGER_MS, SPACE, RADIUS, TYPE } from '../../constants/DesignTokens';
 
 const BUBBLE_SHOWN_KEY = 'orbtap_login_bubble_shown';
 
@@ -53,6 +53,7 @@ export default function LoginScreen() {
     try {
       const result = provider === 'google' ? await signInWithGoogle() : await signInWithApple();
       if (!result.success) {
+        if (result.message?.includes('Redirecting')) return;
         setLoginError(result.message);
         safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         return;
@@ -88,6 +89,22 @@ export default function LoginScreen() {
       }
     })();
   }, []);
+
+  // Web: complete Apple sign-in after redirect from Firebase handler (orbtap.firebaseapp.com/__/auth/handler)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    let cancelled = false;
+    handleAppleRedirectResult().then((credential) => {
+      if (cancelled || !credential) return;
+      ensureSocialUserProfile(credential).then(() => {
+        if (!cancelled) {
+          safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.replace('/' as any);
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [router]);
 
   useEffect(() => {
     if (hasShownBubbleRef.current) return;

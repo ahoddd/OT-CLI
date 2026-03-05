@@ -52,13 +52,15 @@ export interface ColorTokens {
   cardGlow?: string;
 }
 
-/** Typography scale. */
+/** Typography scale. Minimum body 15px, caption 12px; use label/small for secondary labels (13–14px). */
 export interface TypographyTokens {
   title: { fontSize: number; fontWeight: '700'; lineHeight: number };
   heading: { fontSize: number; fontWeight: '600'; lineHeight: number };
   subheading: { fontSize: number; fontWeight: '600'; lineHeight: number };
   body: { fontSize: number; fontWeight: '400'; lineHeight: number };
   caption: { fontSize: number; fontWeight: '400'; lineHeight: number };
+  /** Secondary labels (e.g. form labels, metadata); min legible size. */
+  label: { fontSize: number; fontWeight: '500'; lineHeight: number };
 }
 
 /** Motion tokens. */
@@ -104,6 +106,7 @@ function getClassicColors(colorMode: ColorMode): ColorTokens {
     scrim: colorMode === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)',
     overlay: colorMode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
     gold: COLORS.gold[0],
+    cardGlow: colorMode === 'dark' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.08)',
   };
 }
 
@@ -122,6 +125,7 @@ const TYPOGRAPHY: TypographyTokens = {
   subheading: { fontSize: 16, fontWeight: '600', lineHeight: 22, ...(FONT_DISPLAY && { fontFamily: FONT_DISPLAY }) },
   body: { fontSize: 15, fontWeight: '400', lineHeight: 22, ...(FONT_BODY && { fontFamily: FONT_BODY }) },
   caption: { fontSize: 12, fontWeight: '400', lineHeight: 16, ...(FONT_BODY && { fontFamily: FONT_BODY }) },
+  label: { fontSize: 14, fontWeight: '500', lineHeight: 20, ...(FONT_BODY && { fontFamily: FONT_BODY }) },
 };
 
 /** Shared motion (from DesignTokens). */

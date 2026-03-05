@@ -68,7 +68,7 @@ import { Partner } from '../../constants/MockData';
 import type { PartnerTier } from '../../constants/PartnerTiers';
 import { PARTNER_TIER_COLORS, PARTNER_TIER_LABELS } from '../../constants/PartnerTiers';
 import { COLORS } from '../../constants/Colors';
-import { SPACE, RADIUS } from '../../constants/DesignTokens';
+import { SPACE, RADIUS, TYPE, SCROLL_CONTENT } from '../../constants/DesignTokens';
 import { distanceToPartner, formatDistanceMi } from '../../utils/location';
 import { safeHaptics } from '../../utils/safeHaptics';
 
@@ -1114,7 +1114,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   mapPlaceholderSub: {
-    fontSize: 14,
+    fontSize: TYPE.label,
     lineHeight: 20,
     textAlign: 'center',
     maxWidth: 300,
@@ -1127,7 +1127,7 @@ const styles = StyleSheet.create({
   },
   mapPlaceholderBtnText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: TYPE.body,
     fontWeight: '700',
   },
 
@@ -1285,16 +1285,16 @@ const styles = StyleSheet.create({
   },
   filterClearAllText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: TYPE.caption,
     fontWeight: '700',
   },
   filterResultCount: {
-    fontSize: 12,
+    fontSize: TYPE.caption,
     fontWeight: '500',
     marginBottom: SPACE.sm,
   },
   filterPanelLabel: {
-    fontSize: 11,
+    fontSize: TYPE.caption,
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -1319,7 +1319,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   filterPanelChipText: {
-    fontSize: 13,
+    fontSize: TYPE.label,
     fontWeight: '600',
   },
   filterDot: {
@@ -1336,7 +1336,7 @@ const styles = StyleSheet.create({
   },
   filterApplyBtnText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: TYPE.body,
     fontWeight: '800',
   },
 });

@@ -8,7 +8,15 @@
     "close": "Close",
     "loading": "Loading…",
     "error": "Something went wrong.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "logout": "Logout",
+    "logoutConfirm": "Return to sign in?",
+    "delete": "Delete",
+    "deleteConfirm": "Are you sure?",
+    "saving": "Saving…",
+    "reject": "Reject",
+    "rejected": "Rejected",
+    "ok": "OK"
   },
   "auth": {
     "signIn": "Sign in",
@@ -370,7 +378,16 @@
     "deny": "Deny",
     "pointAtQR": "Point your camera at a partner's QR code",
     "redeemPerk": "Redeem a perk",
-    "earnOT": "Earn OT"
+    "earnOT": "Earn OT",
+    "cameraNotOpened": "Camera wasn't opened. Tap below to try again when you're ready to scan.",
+    "openCamera": "Open camera",
+    "openCameraTitle": "Open camera to scan?",
+    "openCameraBody": "OrbTap would like to use your camera to scan partner QR codes and redeem perks.",
+    "rememberMyChoice": "Remember my choice for future scans",
+    "requestPermission": "Request Permission",
+    "deniedPrompt": "You chose not to use the camera. Tap below to open the camera when you're ready to scan.",
+    "requestingPermission": "Requesting permission…",
+    "needsCamera": "OrbTap needs camera to scan partner QR codes."
   },
   "missions": {
     "missions": "Missions",
@@ -405,6 +422,9 @@
     "you": "You",
     "perk": "perk",
     "perks": "perks"
+  },
+  "stampCard": {
+    "searchPlaceholder": "Search by program or partner…"
   },
   "bookmarks": {
     "bookmarks": "Bookmarks",
@@ -461,7 +481,16 @@
   "support": {
     "support": "Support",
     "helpCenter": "Help Center",
-    "contact": "Contact us"
+    "contact": "Contact us",
+    "placeholder": "Describe your issue, question, or feedback…",
+    "sendRequest": "Send request",
+    "needFasterHelp": "Need faster help?",
+    "requestReceived": "Request received",
+    "requestReceivedSub": "We'll get back to you within 24–48 hours. Check your email for updates.",
+    "sendAnother": "Send another",
+    "backToSettings": "Back to settings",
+    "heroTitle": "We're here to help",
+    "heroSub": "Describe your issue and we'll follow up within 24–48 hours."
   },
   "report": {
     "title": "Report",

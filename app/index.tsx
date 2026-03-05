@@ -13,7 +13,7 @@ import { useCurrentUserProfile } from '../hooks/useCurrentUserProfile';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { OrbTapLogoMark } from '../components/OrbTapLogoMark';
-import { SPACE, HERO_STAGGER_MS } from '../constants/DesignTokens';
+import { SPACE, RADIUS, TYPE, HERO_STAGGER_MS } from '../constants/DesignTokens';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp, FadeIn } from 'react-native-reanimated';
 import { LandingVideoBackground } from '../components/LandingVideoBackground';
@@ -160,53 +160,53 @@ const styles = StyleSheet.create({
     backgroundColor: PREAUTH.background,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: SPACE.base,
   },
-  loadingText: { color: PREAUTH.textSecondary, fontSize: 16, fontWeight: '600' },
+  loadingText: { color: PREAUTH.textSecondary, fontSize: TYPE.body, fontWeight: '600' },
 
-  hero: { alignItems: 'center', marginBottom: 12 },
-  tagline: { color: PREAUTH.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 2, marginTop: 4 },
+  hero: { alignItems: 'center', marginBottom: SPACE.md },
+  tagline: { color: PREAUTH.textMuted, fontSize: TYPE.caption, fontWeight: '700', letterSpacing: 2, marginTop: SPACE.xs },
   heroHeadline: {
     color: PREAUTH.text,
-    fontSize: 20,
+    fontSize: TYPE.subheading,
     fontWeight: '800',
     letterSpacing: -0.3,
     textAlign: 'center',
     marginTop: 2,
-    paddingHorizontal: 4,
+    paddingHorizontal: SPACE.xs,
     lineHeight: 26,
   },
   heroSub: {
     color: PREAUTH.textSecondary,
-    fontSize: 13,
+    fontSize: TYPE.label,
     lineHeight: 18,
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: SPACE.xs,
     paddingHorizontal: 6,
     maxWidth: 280,
   },
-  trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginTop: 8, gap: 10 },
-  trustLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  trustText: { color: PREAUTH.primary, fontSize: 11, fontWeight: '600' },
+  trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', marginTop: SPACE.sm, gap: SPACE.md },
+  trustLine: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs },
+  trustText: { color: PREAUTH.primary, fontSize: TYPE.caption, fontWeight: '600' },
   socialStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    paddingVertical: SPACE.xs,
+    paddingHorizontal: SPACE.sm,
     backgroundColor: PREAUTH.surface,
-    borderRadius: 10,
+    borderRadius: RADIUS.sm,
     borderWidth: 1,
     borderColor: PREAUTH.surfaceBorder,
-    gap: 4,
+    gap: SPACE.xs,
   },
   socialItem: { alignItems: 'center', paddingHorizontal: 6 },
   socialItemBorder: { borderRightWidth: 1, borderRightColor: PREAUTH.surfaceBorder },
-  socialValue: { color: PREAUTH.primary, fontSize: 12, fontWeight: '800' },
-  socialLabel: { color: PREAUTH.textMuted, fontSize: 9, fontWeight: '600', marginTop: 1 },
+  socialValue: { color: PREAUTH.primary, fontSize: TYPE.caption, fontWeight: '800' },
+  socialLabel: { color: PREAUTH.textMuted, fontSize: TYPE.caption, fontWeight: '600', marginTop: 1 },
 
-  cardsWrap: { gap: 6, marginBottom: 10 },
+  cardsWrap: { gap: 6, marginBottom: SPACE.md },
   spacer: { flex: 1, minHeight: 6 },
 
-  ctaBlock: { gap: 8, paddingBottom: 4 },
-  footerTeaser: { color: PREAUTH.textMuted, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, textAlign: 'center', marginTop: 2 },
+  ctaBlock: { gap: SPACE.sm, paddingBottom: SPACE.xs },
+  footerTeaser: { color: PREAUTH.textMuted, fontSize: TYPE.caption, fontWeight: '600', letterSpacing: 0.5, textAlign: 'center', marginTop: 2 },
 });

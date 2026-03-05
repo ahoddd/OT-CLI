@@ -3,22 +3,28 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// OrbTap Firebase Config — see docs/FIREBASE_CONFIG.md. All values from env; no secrets in source.
+// OrbTap Firebase Config — all values from env. Set in .env or EAS secrets; never commit real values.
 const env: Record<string, string | undefined> =
   typeof process !== 'undefined' && process.env ? (process.env as Record<string, string | undefined>) : {};
-const apiKey = env.EXPO_PUBLIC_FIREBASE_API_KEY;
-if (!apiKey?.trim()) {
-  throw new Error(
-    'Missing EXPO_PUBLIC_FIREBASE_API_KEY. Add it to .env (see .env.example). Do not commit the key to git.'
-  );
+const apiKey = env.EXPO_PUBLIC_FIREBASE_API_KEY?.trim();
+const authDomain = env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim();
+const projectId = env.EXPO_PUBLIC_FIREBASE_PROJECT_ID?.trim();
+const storageBucket = env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim();
+const messagingSenderId = env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID?.trim();
+const appId = env.EXPO_PUBLIC_FIREBASE_APP_ID?.trim();
+if (!apiKey) {
+  throw new Error('Missing EXPO_PUBLIC_FIREBASE_API_KEY. Set in .env (see .env.example). Do not commit .env.');
+}
+if (!projectId || !appId) {
+  throw new Error('Missing EXPO_PUBLIC_FIREBASE_PROJECT_ID or EXPO_PUBLIC_FIREBASE_APP_ID. Set in .env (see .env.example).');
 }
 const firebaseConfig = {
-  apiKey: apiKey.trim(),
-  authDomain: env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? 'orbtap.firebaseapp.com',
-  projectId: env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? 'orbtap',
-  storageBucket: env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'orbtap.firebasestorage.app',
-  messagingSenderId: env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? '850131821354',
-  appId: env.EXPO_PUBLIC_FIREBASE_APP_ID ?? '1:850131821354:web:2bedd32c5aeecf74e97453',
+  apiKey,
+  authDomain: authDomain || `${projectId}.firebaseapp.com`,
+  projectId,
+  storageBucket: storageBucket || `${projectId}.appspot.com`,
+  messagingSenderId: messagingSenderId || '',
+  appId,
 };
 
 // Initialize Firebase

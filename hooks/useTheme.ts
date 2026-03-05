@@ -37,6 +37,7 @@ export const useTheme = () => {
     themePreference,
     uiVersion,
     tokens: bundle.tokens,
+    typography: bundle.tokens.typography,
     surfaces: bundle.surfaces,
     textStyles: bundle.textStyles,
     borders: bundle.borders,

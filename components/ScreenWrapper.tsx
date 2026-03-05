@@ -14,14 +14,19 @@ export interface ScreenWrapperProps {
 }
 
 function ScreenWrapperInner({ children, style, title, headerLeft, headerRight }: ScreenWrapperProps) {
-  const { colors, isDark } = useTheme();
+  const { colors, isDark, typography } = useTheme();
+  const headerTitleStyle = {
+    ...typography.heading,
+    color: colors.text,
+    letterSpacing: 0.3,
+  };
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }, style]} edges={['top']}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       {title != null ? (
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           {headerLeft ?? null}
-          <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{title}</Text>
+          <Text style={[styles.headerTitle, headerTitleStyle]} numberOfLines={1}>{title}</Text>
           {headerRight ?? null}
         </View>
       ) : null}
@@ -47,8 +52,5 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 0.3,
   },
 });

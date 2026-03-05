@@ -29,6 +29,7 @@ import type { BountyDoc } from '../../constants/orbBounty';
 import { PARTNER_TIER_COLORS } from '../../constants/PartnerTiers';
 import type { PartnerTier } from '../../constants/PartnerTiers';
 import { useI18n } from '../../context/I18nContext';
+import { SPACE, RADIUS, TYPE, SCROLL_CONTENT } from '../../constants/DesignTokens';
 
 type TabKey = 'feed' | 'mine' | 'inbox';
 
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
   loadWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   loadText: { marginTop: 8 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  scrollContent: { ...SCROLL_CONTENT, paddingBottom: SPACE.xxxl },
   errorCard: { padding: 16, borderRadius: 12, marginBottom: 16, borderWidth: 1 },
   errorText: { fontSize: 14, marginBottom: 12 },
   retryBtn: { alignSelf: 'flex-start', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
@@ -377,25 +378,25 @@ const styles = StyleSheet.create({
   emptyCta: { marginTop: 16, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
   emptyCtaText: { color: '#000', fontWeight: '700', fontSize: 14 },
   card: {
-    borderRadius: 14,
+    borderRadius: RADIUS.md,
     borderWidth: 1.5,
-    marginBottom: 12,
+    marginBottom: SPACE.md,
     overflow: 'hidden',
     position: 'relative',
   },
   cardGlass: { minHeight: 88 },
   cardAccentBar: { position: 'absolute', top: 0, left: 0, right: 0, height: 4 },
-  cardContent: { padding: 16, paddingTop: 20 },
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 6 },
-  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, gap: 8, flexWrap: 'wrap' },
-  cardCategory: { fontSize: 12 },
-  tierBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
-  tierBadgeText: { fontSize: 10, fontWeight: '800' },
-  cardStatus: { fontSize: 12, fontWeight: '600' },
-  cardBudget: { fontSize: 11 },
-  highLikelihood: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  highLikelihoodText: { fontSize: 11, fontWeight: '600' },
-  offState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  offText: { fontSize: 18, fontWeight: '700', marginTop: 12 },
-  offSub: { fontSize: 13, marginTop: 4 },
+  cardContent: { padding: SPACE.base, paddingTop: SPACE.lg },
+  cardTitle: { fontSize: TYPE.subheading, fontWeight: '700', marginBottom: 6 },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.xs, gap: SPACE.sm, flexWrap: 'wrap' },
+  cardCategory: { fontSize: TYPE.caption },
+  tierBadge: { paddingHorizontal: SPACE.sm, paddingVertical: 2, borderRadius: RADIUS.sm, borderWidth: 1 },
+  tierBadgeText: { fontSize: TYPE.label, fontWeight: '800' },
+  cardStatus: { fontSize: TYPE.caption, fontWeight: '600' },
+  cardBudget: { fontSize: TYPE.caption },
+  highLikelihood: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs, marginTop: SPACE.sm },
+  highLikelihoodText: { fontSize: TYPE.caption, fontWeight: '600' },
+  offState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACE.xl },
+  offText: { fontSize: TYPE.heading, fontWeight: '700', marginTop: SPACE.md },
+  offSub: { fontSize: TYPE.label, marginTop: SPACE.xs },
 });

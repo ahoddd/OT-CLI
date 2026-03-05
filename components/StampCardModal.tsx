@@ -23,6 +23,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../hooks/useTheme';
+import { useI18n } from '../context/I18nContext';
 import { SPACE, RADIUS } from '../constants/DesignTokens';
 import type { StampCardWithProgram } from '../hooks/useStampCards';
 import type { StampActiveReward } from '../constants/StampCards';
@@ -54,6 +55,7 @@ export function StampCardModal({
 }: StampCardModalProps) {
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const { colors } = useTheme();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const modalHeight = Math.round(winHeight * 0.92);
   const carouselHeight = Math.min(winHeight * 0.52, 420);
@@ -158,12 +160,12 @@ export function StampCardModal({
             <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, { color: colors.text, backgroundColor: colors.surface, borderColor: colors.border }]}
-              placeholder="Search by program or partner..."
+              placeholder={t('stampCard.searchPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={searchQuery}
               onChangeText={setSearchQuery}
               returnKeyType="search"
-              accessibilityLabel="Search stamp cards"
+              accessibilityLabel={t('stampCard.searchPlaceholder')}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.searchClear} hitSlop={8}>

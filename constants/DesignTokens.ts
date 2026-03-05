@@ -51,7 +51,7 @@ export const ELEVATION = {
   modal: 12,
 } as const;
 
-/** Minimum tap target size (accessibility). */
+/** Minimum tap target size (accessibility). Use minWidth/minHeight ≥ TAP_TARGET_MIN for icon-only buttons and key CTAs. */
 export const TAP_TARGET_MIN = 44;
 
 /** Standard card padding. */
@@ -59,6 +59,31 @@ export const CARD_PADDING = SPACE.base;
 
 /** Standard screen horizontal padding. */
 export const SCREEN_PADDING_H = SPACE.base;
+
+/**
+ * Typography recommendations (use Theme typography tokens).
+ * Screen titles: 18–22 (typography.heading / typography.title).
+ * Section titles: 16–18 (typography.subheading / typography.heading).
+ * Body: 15+ (typography.body). Captions: 12+ (typography.caption).
+ * No critical UI below 12px.
+ */
+export const TYPE_RECOMMENDATIONS = {
+  screenTitleMin: 18,
+  screenTitleMax: 22,
+  sectionTitleMin: 16,
+  bodyMin: 15,
+  captionMin: 12,
+} as const;
+
+/** Font sizes for use in StyleSheets (match Theme typography). Prefer theme.typography in components. */
+export const TYPE = {
+  title: 22,
+  heading: 18,
+  subheading: 16,
+  body: 15,
+  caption: 12,
+  label: 14,
+} as const;
 
 /** Section title letter-spacing and size. */
 export const SECTION_TITLE = {
@@ -71,8 +96,11 @@ export const SECTION_TITLE = {
 export const SCROLL_CONTENT = {
   flexGrow: 1,
   paddingHorizontal: SPACE.base,
-  paddingBottom: SPACE.xl,
+  paddingBottom: SPACE.xxl,
 } as const;
+
+/** Section gap between major sections (e.g. hero → list). */
+export const SECTION_GAP = SPACE.xl;
 
 /** Recommended FlatList props for performance (use when list is long or items are heavy). */
 export const LIST_OPTIMIZATION = {

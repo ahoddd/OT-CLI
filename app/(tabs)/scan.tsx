@@ -366,7 +366,7 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={accentColor} />
-        <Text style={[styles.centeredText, { color: colors.text }]}>Loading...</Text>
+        <Text style={[styles.centeredText, { color: colors.text }]}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -375,15 +375,15 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={[styles.centeredText, { color: colors.text }]}>
-          Camera wasn't opened. Tap below to try again when you're ready to scan.
+          {t('scan.cameraNotOpened')}
         </Text>
         <TouchableOpacity
           style={[styles.primaryBtn, { backgroundColor: accentColor }]}
           onPress={() => setUserWantsCamera(null)}
-          accessibilityLabel="Ask again to open camera"
+          accessibilityLabel={t('scan.openCamera')}
           accessibilityRole="button"
         >
-          <Text style={[styles.primaryBtnText, { color: isDark ? '#000' : '#1a1a1a' }]}>Open camera</Text>
+          <Text style={[styles.primaryBtnText, { color: isDark ? '#000' : '#1a1a1a' }]}>{t('scan.openCamera')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -392,9 +392,9 @@ export default function ScanScreen() {
   if (storedConsent === null) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.consentTitle, { color: colors.text }]}>Open camera to scan?</Text>
+        <Text style={[styles.consentTitle, { color: colors.text }]}>{t('scan.openCameraTitle')}</Text>
         <Text style={[styles.centeredText, { color: colors.textSecondary }]}>
-          OrbTap would like to use your camera to scan partner QR codes and redeem perks.
+          {t('scan.openCameraBody')}
         </Text>
         <View style={styles.consentRow}>
           <Switch
@@ -402,9 +402,9 @@ export default function ScanScreen() {
             onValueChange={setRememberChoice}
             trackColor={{ false: colors.border, true: accentColor }}
             thumbColor="#fff"
-            accessibilityLabel="Remember my choice for future scans"
+            accessibilityLabel={t('scan.rememberMyChoice')}
           />
-          <Text style={[styles.rememberLabel, { color: colors.text }]}>Remember my choice</Text>
+          <Text style={[styles.rememberLabel, { color: colors.text }]}>{t('scan.rememberMyChoice')}</Text>
         </View>
         <View style={styles.consentButtons}>
           <TouchableOpacity
@@ -432,15 +432,15 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <Text style={[styles.centeredText, { color: colors.text }]}>
-          You chose not to use the camera. Tap below to open the camera when you're ready to scan.
+          {t('scan.deniedPrompt')}
         </Text>
         <TouchableOpacity
           style={[styles.primaryBtn, { backgroundColor: accentColor }]}
           onPress={openCameraAgain}
-          accessibilityLabel="Open camera to scan"
+          accessibilityLabel={t('scan.openCamera')}
           accessibilityRole="button"
         >
-          <Text style={[styles.primaryBtnText, { color: isDark ? '#000' : '#1a1a1a' }]}>Open camera</Text>
+          <Text style={[styles.primaryBtnText, { color: isDark ? '#000' : '#1a1a1a' }]}>{t('scan.openCamera')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -450,7 +450,7 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={accentColor} />
-        <Text style={[styles.centeredText, { color: colors.text }]}>Requesting permission...</Text>
+        <Text style={[styles.centeredText, { color: colors.text }]}>{t('scan.requestingPermission')}</Text>
       </View>
     );
   }
@@ -458,18 +458,18 @@ export default function ScanScreen() {
   if (shouldUseCamera && hasPermission === false) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.centeredText, { color: colors.text }]}>OrbTap needs camera to scan partner QR codes.</Text>
+        <Text style={[styles.centeredText, { color: colors.text }]}>{t('scan.needsCamera')}</Text>
         <TouchableOpacity
           style={[styles.primaryBtn, { backgroundColor: accentColor }]}
           onPress={requestPermission}
           disabled={requestingPermission}
-          accessibilityLabel="Request camera permission to scan QR codes"
+          accessibilityLabel={t('scan.requestPermission')}
           accessibilityRole="button"
         >
           {requestingPermission ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <Text style={[styles.primaryBtnText, { color: isDark ? '#000' : '#1a1a1a' }]}>Request Permission</Text>
+            <Text style={[styles.primaryBtnText, { color: isDark ? '#000' : '#1a1a1a' }]}>{t('scan.requestPermission')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -480,7 +480,7 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={accentColor} />
-        <Text style={[styles.centeredText, { color: colors.text }]}>Loading...</Text>
+        <Text style={[styles.centeredText, { color: colors.text }]}>{t('common.loading')}</Text>
       </View>
     );
   }

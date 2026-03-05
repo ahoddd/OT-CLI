@@ -6,6 +6,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../hooks/useTheme';
+import { SPACE, RADIUS } from '../constants/DesignTokens';
 
 export interface PageHeroProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -16,16 +17,16 @@ export interface PageHeroProps {
 }
 
 export function PageHero({ icon, iconColor, title, description, trustLine }: PageHeroProps) {
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
   return (
     <View style={[styles.wrap, { borderBottomColor: colors.border }]}>
       <View style={[styles.iconWrap, { backgroundColor: iconColor + '22' }]}>
         <Ionicons name={icon} size={32} color={iconColor} />
       </View>
-      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-      <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
+      <Text style={[typography.subheading, { color: colors.text, fontWeight: '800', marginBottom: SPACE.sm }]}>{title}</Text>
+      <Text style={[typography.body, { color: colors.textSecondary, marginBottom: SPACE.sm }]}>{description}</Text>
       {trustLine && (
-        <Text style={[styles.trustLine, { color: colors.textSecondary }]}>{trustLine}</Text>
+        <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '600' }]}>{trustLine}</Text>
       )}
     </View>
   );
@@ -33,31 +34,17 @@ export function PageHero({ icon, iconColor, title, description, trustLine }: Pag
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingVertical: 24,
-    paddingHorizontal: 4,
-    marginBottom: 20,
+    paddingVertical: SPACE.xl,
+    paddingHorizontal: SPACE.xs,
+    marginBottom: SPACE.lg,
     borderBottomWidth: 1,
   },
   iconWrap: {
     width: 56,
     height: 56,
-    borderRadius: 14,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  trustLine: {
-    fontSize: 12,
-    fontWeight: '600',
+    marginBottom: SPACE.md,
   },
 });

@@ -20,7 +20,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS } from '../../constants/Colors';
-import { LIST_OPTIMIZATION } from '../../constants/DesignTokens';
+import { LIST_OPTIMIZATION, SPACE, RADIUS, TYPE, SCROLL_CONTENT } from '../../constants/DesignTokens';
 import { safeHaptics, Haptics } from '../../utils/safeHaptics';
 import { alert as alertDialog } from '../../utils/alert';
 import type { AppNotification } from '../../services/userNotifications';
@@ -276,24 +276,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 6,
   },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  emptyTrashWrap: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1 },
+  badgeText: { color: '#fff', fontSize: TYPE.caption, fontWeight: '700' },
+  emptyTrashWrap: { paddingVertical: SPACE.md, paddingHorizontal: SPACE.base, borderBottomWidth: 1 },
   emptyTrashBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    borderRadius: 12,
+    gap: SPACE.sm,
+    paddingVertical: SPACE.md,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
   },
-  emptyTrashLabel: { fontSize: 15, fontWeight: '600' },
-  listContent: { paddingBottom: 40 },
+  emptyTrashLabel: { fontSize: TYPE.body, fontWeight: '600' },
+  listContent: { paddingBottom: SPACE.xxxl },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.base,
     borderBottomWidth: 1,
   },
   iconWrap: {
@@ -302,23 +302,23 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: SPACE.md,
   },
   rowContent: { flex: 1, minWidth: 0 },
-  rowTitle: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
-  rowBody: { fontSize: 14, lineHeight: 20 },
-  rowTime: { fontSize: 12, marginTop: 4, opacity: 0.9 },
+  rowTitle: { fontSize: TYPE.subheading, fontWeight: '700', marginBottom: 2 },
+  rowBody: { fontSize: TYPE.label, lineHeight: 20 },
+  rowTime: { fontSize: TYPE.caption, marginTop: SPACE.xs, opacity: 0.9 },
   trashBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: SPACE.sm,
   },
   loader: { marginTop: 48 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginTop: 16 },
-  emptySub: { fontSize: 14, textAlign: 'center', marginTop: 8 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACE.xxxl },
+  emptyTitle: { fontSize: TYPE.heading, fontWeight: '700', marginTop: SPACE.base },
+  emptySub: { fontSize: TYPE.label, textAlign: 'center', marginTop: SPACE.sm },
   placeholder: { textAlign: 'center', marginTop: 48 },
 });

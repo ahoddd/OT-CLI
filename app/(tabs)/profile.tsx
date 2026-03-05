@@ -68,7 +68,7 @@ import Animated, {
   withDelay,
   interpolate,
 } from 'react-native-reanimated';
-import { SPACE, RADIUS, MOTION, SECTION_TITLE } from '../../constants/DesignTokens';
+import { SPACE, RADIUS, MOTION, SECTION_TITLE, TYPE } from '../../constants/DesignTokens';
 import { BADGES } from '../../constants/Badges';
 import { StreakMilestoneCard, isStreakMilestone } from '../../components/StreakMilestoneCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -188,14 +188,14 @@ function ProfileHero({
 const heroStyles = StyleSheet.create({
   container: { width: '100%', overflow: 'hidden' },
   tierBar: { height: 4, width: '100%' },
-  inner: { paddingHorizontal: 16, paddingBottom: 48 },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 8, paddingBottom: 12 },
+  inner: { paddingHorizontal: SPACE.base, paddingBottom: 48 },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, paddingTop: SPACE.sm, paddingBottom: SPACE.md },
   actionBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center', alignItems: 'center',
   },
-  identityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 16, marginBottom: 20 },
+  identityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.base, marginBottom: SPACE.lg },
   avatarWrap: { position: 'relative' },
   avatarRing: { borderWidth: 3, borderRadius: 48, padding: 2 },
   avatarImg: { width: 84, height: 84, borderRadius: 42 },
@@ -204,21 +204,21 @@ const heroStyles = StyleSheet.create({
     width: 22, height: 22, borderRadius: 11,
     justifyContent: 'center', alignItems: 'center',
   },
-  nameBlock: { flex: 1, paddingTop: 4 },
-  displayName: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: -0.3 },
-  handle: { color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '600', marginTop: 2 },
-  taglineText: { color: 'rgba(255,255,255,0.45)', fontSize: 12, fontStyle: 'italic', marginTop: 2 },
-  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' },
-  tierChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100, borderWidth: 1 },
-  tierChipText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
-  levelChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 100 },
-  levelChipText: { color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '700' },
-  bottomActions: { flexDirection: 'row', gap: 10 },
+  nameBlock: { flex: 1, paddingTop: SPACE.xs },
+  displayName: { color: '#fff', fontSize: TYPE.title, fontWeight: '900', letterSpacing: -0.3 },
+  handle: { color: 'rgba(255,255,255,0.55)', fontSize: TYPE.label, fontWeight: '600', marginTop: 2 },
+  taglineText: { color: 'rgba(255,255,255,0.45)', fontSize: TYPE.caption, fontStyle: 'italic', marginTop: 2 },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SPACE.sm, flexWrap: 'wrap' },
+  tierChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.sm, paddingVertical: 3, borderRadius: 100, borderWidth: 1 },
+  tierChipText: { fontSize: TYPE.caption, fontWeight: '900', letterSpacing: 0.8 },
+  levelChip: { paddingHorizontal: SPACE.sm, paddingVertical: 3, borderRadius: 100 },
+  levelChipText: { color: 'rgba(255,255,255,0.7)', fontSize: TYPE.label, fontWeight: '700' },
+  bottomActions: { flexDirection: 'row', gap: SPACE.md },
   actionPill: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 10, borderRadius: 100, borderWidth: 1,
+    gap: 6, paddingVertical: SPACE.md, borderRadius: 100, borderWidth: 1,
   },
-  actionPillText: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700' },
+  actionPillText: { color: 'rgba(255,255,255,0.85)', fontSize: TYPE.label, fontWeight: '700' },
 });
 
 function StatsTriptych({
@@ -281,11 +281,11 @@ const triptychStyles = StyleSheet.create({
     elevation: 8,
     marginBottom: 16,
   },
-  col: { flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 8 },
-  divider: { width: 1, marginVertical: 12 },
-  value: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
-  label: { fontSize: 9, fontWeight: '800', letterSpacing: 0.8, marginTop: 2 },
-  sub: { fontSize: 9, marginTop: 1 },
+  col: { flex: 1, alignItems: 'center', paddingVertical: SPACE.base, paddingHorizontal: SPACE.sm },
+  divider: { width: 1, marginVertical: SPACE.md },
+  value: { fontSize: TYPE.title, fontWeight: '900', letterSpacing: -0.5 },
+  label: { fontSize: TYPE.caption, fontWeight: '800', letterSpacing: 0.8, marginTop: 2 },
+  sub: { fontSize: TYPE.caption, marginTop: 1 },
 });
 
 /* ────────────────────────────────────────────────────────────
@@ -337,10 +337,10 @@ const weeklyStyles = StyleSheet.create({
   item: { flex: 1, alignItems: 'center' },
   itemLabel: { alignItems: 'center' },
   divider: { width: 1, height: 28, marginHorizontal: 10 },
-  value: { fontSize: 20, fontWeight: '900' },
-  label: { fontSize: 9, fontWeight: '800', letterSpacing: 0.8, marginTop: 2 },
-  weekLabel: { fontSize: 11, fontWeight: '700' },
-  weekSub: { fontSize: 9, fontWeight: '600' },
+  value: { fontSize: TYPE.subheading, fontWeight: '900' },
+  label: { fontSize: TYPE.caption, fontWeight: '800', letterSpacing: 0.8, marginTop: 2 },
+  weekLabel: { fontSize: TYPE.caption, fontWeight: '700' },
+  weekSub: { fontSize: TYPE.caption, fontWeight: '600' },
 });
 
 function StreakHeroCard({
@@ -576,7 +576,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    const ok = await confirmAlert('Logout?', 'Return to sign in?', { confirmText: 'Logout', cancelText: 'Cancel' });
+    const ok = await confirmAlert(t('settings.logout'), t('common.logoutConfirm'), { confirmText: t('auth.signOut'), cancelText: t('common.cancel') });
     if (ok) {
       await clearBiometricCreds();
       await signOut(auth);
@@ -1085,7 +1085,7 @@ const styles = StyleSheet.create({
   levelPillText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   streakPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: SPACE.sm, paddingVertical: SPACE.xs, borderRadius: RADIUS.full, borderWidth: 1 },
   streakPillText: { fontSize: 11, fontWeight: '800' },
-  bioText: { fontSize: 13, lineHeight: 18, marginTop: SPACE.sm },
+  bioText: { fontSize: TYPE.label, lineHeight: 18, marginTop: SPACE.sm },
   profileActions: { flexDirection: 'row', gap: SPACE.sm, marginTop: SPACE.md },
   profileCta: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs, paddingVertical: SPACE.sm, paddingHorizontal: SPACE.md, borderRadius: RADIUS.sm, borderWidth: 1 },
   profileCtaText: { fontSize: 13, fontWeight: '700' },
@@ -1153,12 +1153,12 @@ const styles = StyleSheet.create({
   achievementsDetail: { fontSize: 11, fontWeight: '600' },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm },
   badgeGridItem: { marginBottom: SPACE.xs },
-  ritualLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginTop: SPACE.sm, marginBottom: SPACE.xs },
+  ritualLabel: { fontSize: TYPE.caption, fontWeight: '700', letterSpacing: 0.5, marginTop: SPACE.sm, marginBottom: SPACE.xs },
   ritualRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.xs },
   ritualChip: { paddingHorizontal: SPACE.sm, paddingVertical: SPACE.xs, borderRadius: RADIUS.sm, borderWidth: 1 },
-  ritualChipText: { fontSize: 11, fontWeight: '700' },
+  ritualChipText: { fontSize: TYPE.caption, fontWeight: '700' },
   achievementsEmpty: { alignItems: 'center', paddingVertical: SPACE.lg },
-  achievementsEmptyText: { fontSize: 12, textAlign: 'center', marginTop: SPACE.sm, paddingHorizontal: SPACE.md },
+  achievementsEmptyText: { fontSize: TYPE.caption, textAlign: 'center', marginTop: SPACE.sm, paddingHorizontal: SPACE.md },
   achievementsEmptyBtn: { marginTop: SPACE.sm, paddingVertical: SPACE.sm, paddingHorizontal: SPACE.base, borderRadius: RADIUS.sm, borderWidth: 1 },
   achievementsEmptyBtnText: { fontSize: 12, fontWeight: '800' },
   statsGrid: { flexDirection: 'row', gap: SPACE.sm, paddingHorizontal: CARD_PAD, marginBottom: SPACE.lg },
@@ -1168,8 +1168,8 @@ const styles = StyleSheet.create({
   quickList: { paddingHorizontal: CARD_PAD, gap: SPACE.sm },
   quickRow: { flexDirection: 'row', alignItems: 'center', padding: SPACE.md, borderRadius: RADIUS.md, borderWidth: 1, gap: SPACE.md },
   quickIconWrap: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  quickLabel: { fontSize: 15, fontWeight: '700', flex: 1 },
-  partnerShowcaseHint: { fontSize: 11, lineHeight: 15, marginBottom: SPACE.sm },
+  quickLabel: { fontSize: TYPE.body, fontWeight: '700', flex: 1 },
+  partnerShowcaseHint: { fontSize: TYPE.caption, lineHeight: 15, marginBottom: SPACE.sm },
   recentVisitsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm },
   recentVisitChip: {
     flexDirection: 'row',
@@ -1182,14 +1182,14 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   recentVisitDot: { width: 8, height: 8, borderRadius: 4 },
-  recentVisitName: { fontSize: 13, fontWeight: '700', maxWidth: 120 },
-  recentVisitPts: { fontSize: 11, fontWeight: '800' },
+  recentVisitName: { fontSize: TYPE.label, fontWeight: '700', maxWidth: 120 },
+  recentVisitPts: { fontSize: TYPE.caption, fontWeight: '800' },
   networkRow: { flexDirection: 'row', alignItems: 'center', padding: SPACE.md, marginBottom: SPACE.sm, borderRadius: RADIUS.md, borderWidth: 1, gap: SPACE.md },
   networkDot: { width: 8, height: 8, borderRadius: 4 },
-  networkName: { fontSize: 14, fontWeight: '700', flex: 1 },
-  networkMore: { fontSize: 14, fontWeight: '700', flex: 1 },
+  networkName: { fontSize: TYPE.label, fontWeight: '700', flex: 1 },
+  networkMore: { fontSize: TYPE.label, fontWeight: '700', flex: 1 },
   accountSection: { paddingHorizontal: CARD_PAD, marginTop: SPACE.xl },
   logoutRow: { flexDirection: 'row', alignItems: 'center', padding: SPACE.md, borderRadius: RADIUS.md, borderWidth: 1, gap: SPACE.md },
   logoutIconWrap: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  logoutText: { fontSize: 15, fontWeight: '800', flex: 1 },
+  logoutText: { fontSize: TYPE.body, fontWeight: '800', flex: 1 },
 });

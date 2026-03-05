@@ -34,7 +34,7 @@ import { GuidedTutorialOverlay } from '../../components/GuidedTutorialOverlay';
 import { useTutorial } from '../../context/TutorialContext';
 import { useDirectoryOpen } from '../../context/DirectoryOpenContext';
 import { COLORS } from '../../constants/Colors';
-import { HERO_STAGGER_MS } from '../../constants/DesignTokens';
+import { HERO_STAGGER_MS, SPACE, RADIUS, TYPE, SCROLL_CONTENT } from '../../constants/DesignTokens';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../context/AuthContext';
 import { useFlags } from '../../components/FlagContext';
@@ -365,26 +365,26 @@ function UpgradeCTACard({ themeGold, onPress, colors }: { themeGold: string; onP
 
 const upgradeStyles = StyleSheet.create({
   card: {
-    borderRadius: 20,
+    borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: SPACE.base,
     position: 'relative',
     borderWidth: 1,
     borderColor: 'rgba(251,191,36,0.25)',
   },
   shimmerWrap: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 200 },
   shimmerGrad: { width: 200, height: '100%' },
-  inner: { padding: 18 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  inner: { padding: SPACE.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE.md, marginBottom: SPACE.md },
+  iconWrap: { width: 44, height: 44, borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center' },
   textBlock: { flex: 1, minWidth: 0 },
-  title: { fontSize: 16, fontWeight: '900', marginBottom: 2 },
-  sub: { fontSize: 12, fontWeight: '500' },
-  bullets: { gap: 8, marginBottom: 16 },
-  bulletRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  bulletText: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600', flex: 1 },
-  ctaBtn: { borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  ctaBtnText: { color: '#000', fontSize: 15, fontWeight: '900' },
+  title: { fontSize: TYPE.subheading, fontWeight: '900', marginBottom: 2 },
+  sub: { fontSize: TYPE.caption, fontWeight: '500' },
+  bullets: { gap: SPACE.sm, marginBottom: SPACE.base },
+  bulletRow: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
+  bulletText: { color: 'rgba(255,255,255,0.8)', fontSize: TYPE.label, fontWeight: '600', flex: 1 },
+  ctaBtn: { borderRadius: RADIUS.md, paddingVertical: SPACE.md, alignItems: 'center' },
+  ctaBtnText: { color: '#000', fontSize: TYPE.body, fontWeight: '900' },
 });
 
 export default function OrbHubScreen() {
@@ -895,12 +895,12 @@ export default function OrbHubScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 0 },
+  scrollContent: { ...SCROLL_CONTENT, paddingTop: 0 },
   bottomPad: { height: 120 },
-  block: { marginBottom: 16 },
+  block: { marginBottom: SPACE.base },
   blockCard: {
-    marginBottom: 16,
-    borderRadius: 16,
+    marginBottom: SPACE.base,
+    borderRadius: RADIUS.base,
     borderWidth: 1,
     overflow: 'hidden',
     padding: 14,
@@ -984,13 +984,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  hubAllPagesLabel: { fontSize: 11, fontWeight: '700' },
+  hubAllPagesLabel: { fontSize: TYPE.caption, fontWeight: '700' },
   // Category cards
   catCard: {
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
-    padding: 10,
-    marginBottom: 10,
+    padding: SPACE.md,
+    marginBottom: SPACE.md,
     overflow: 'hidden',
   },
   catHeader: {
@@ -998,19 +998,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderLeftWidth: 4,
-    paddingLeft: 8,
-    marginBottom: 10,
+    paddingLeft: SPACE.sm,
+    marginBottom: SPACE.md,
   },
-  catEmoji: { fontSize: 14 },
-  catLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  catEmoji: { fontSize: TYPE.label },
+  catLabel: { fontSize: TYPE.caption, fontWeight: '800', letterSpacing: 0.3 },
   // Tiles inside categories
   hubTilesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   hubTile: {
     width: '30%',
     minWidth: 80,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 10,
+    paddingVertical: SPACE.sm,
+    paddingHorizontal: SPACE.xs,
+    borderRadius: RADIUS.sm,
     borderWidth: 1,
     alignItems: 'center',
     position: 'relative',
@@ -1028,38 +1028,38 @@ const styles = StyleSheet.create({
   },
   hubTilePressed: { opacity: 0.85 },
   hubTileIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  hubTileLabel: { fontSize: 10, fontWeight: '800', marginBottom: 1 },
-  hubTileSub: { fontSize: 9, fontWeight: '600', opacity: 0.9 },
+  hubTileLabel: { fontSize: TYPE.label, fontWeight: '800', marginBottom: 1 },
+  hubTileSub: { fontSize: TYPE.caption, fontWeight: '600', opacity: 0.9 },
   // Following
-  followingRow: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
+  followingRow: { paddingHorizontal: SPACE.base, gap: SPACE.md, paddingBottom: SPACE.xs },
   followCard: {
     width: 140,
-    padding: 12,
-    borderRadius: 12,
+    padding: SPACE.md,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderLeftWidth: 3,
   },
-  followCardName: { fontSize: 13, fontWeight: '700', marginBottom: 3 },
-  followCardPerk: { fontSize: 11, fontWeight: '500' },
+  followCardName: { fontSize: TYPE.label, fontWeight: '700', marginBottom: 3 },
+  followCardPerk: { fontSize: TYPE.caption, fontWeight: '500' },
   // Spheres CTA
   spheresCta: {
-    marginBottom: 16,
-    borderRadius: 18,
+    marginBottom: SPACE.base,
+    borderRadius: RADIUS.lg,
     overflow: 'hidden',
     minHeight: 88,
     position: 'relative',
   },
-  spheresCtaContent: { flexDirection: 'row', alignItems: 'center', padding: 18, gap: 14 },
+  spheresCtaContent: { flexDirection: 'row', alignItems: 'center', padding: SPACE.lg, gap: SPACE.md },
   spheresCtaIconWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   spheresCtaText: { flex: 1, minWidth: 0 },
-  spheresCtaTitle: { color: '#fff', fontSize: 17, fontWeight: '900', letterSpacing: 0.3 },
-  spheresCtaSub: { color: 'rgba(255,255,255,0.92)', fontSize: 12, fontWeight: '600', marginTop: 4, lineHeight: 16 },
+  spheresCtaTitle: { color: '#fff', fontSize: TYPE.body, fontWeight: '900', letterSpacing: 0.3 },
+  spheresCtaSub: { color: 'rgba(255,255,255,0.92)', fontSize: TYPE.caption, fontWeight: '600', marginTop: SPACE.xs, lineHeight: 16 },
   // First orb modal
-  firstOrbModalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  firstOrbModalBox: { borderRadius: 20, padding: 28, width: '100%', maxWidth: 340, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  firstOrbModalIconWrap: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  firstOrbModalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
-  firstOrbModalSub: { fontSize: 14, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
-  firstOrbModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 14, width: '100%' },
-  firstOrbModalBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  firstOrbModalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACE.xl },
+  firstOrbModalBox: { borderRadius: RADIUS.lg, padding: SPACE.xxl, width: '100%', maxWidth: 340, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  firstOrbModalIconWrap: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: SPACE.base },
+  firstOrbModalTitle: { fontSize: TYPE.subheading, fontWeight: '800', marginBottom: SPACE.sm, textAlign: 'center' },
+  firstOrbModalSub: { fontSize: TYPE.label, textAlign: 'center', marginBottom: SPACE.lg, lineHeight: 20 },
+  firstOrbModalBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACE.sm, paddingVertical: SPACE.md, paddingHorizontal: SPACE.xl, borderRadius: RADIUS.md, width: '100%' },
+  firstOrbModalBtnText: { color: '#000', fontSize: TYPE.subheading, fontWeight: '800' },
 });

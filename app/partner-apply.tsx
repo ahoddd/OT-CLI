@@ -479,12 +479,11 @@ export default function PartnerApplyScreen() {
         </ScrollView>
       </Animated.View>
 
-      {showShareSheet && (
-        <ShareToSocialSheet
-          payload={partnerReferralSharePayload(user?.uid ?? '')}
-          onClose={() => setShowShareSheet(false)}
-        />
-      )}
+      <ShareToSocialSheet
+        visible={showShareSheet}
+        payload={partnerReferralSharePayload(user?.uid ?? '')}
+        onClose={() => setShowShareSheet(false)}
+      />
     </SafeAreaView>
   );
 }

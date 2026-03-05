@@ -14,6 +14,10 @@ web-build/
 
 expo-env.d.ts
 # @end expo-cli
-# secrets (do not commit)
+# Secrets — never commit. Use .env (from .env.example) or EAS secrets for builds.
 .env
+.env.local
+.env.*.local
+!.env.example
 pc-api-key.json
+*.pem

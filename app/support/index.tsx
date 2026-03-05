@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useModerationLevel } from '../../hooks/useModerationLevel';
 import { moderateContent } from '../../utils/moderation';
 import { COLORS } from '../../constants/Colors';
+import { SCROLL_CONTENT, SPACE, RADIUS, TYPE } from '../../constants/DesignTokens';
 import { submitSupportRequest } from '../../services/supportRequests';
 import { safeHaptics, Haptics } from '../../utils/safeHaptics';
 import { useI18n } from '../../context/I18nContext';
@@ -82,7 +83,7 @@ export default function SupportScreen() {
   if (submitted) {
     return (
       <ScreenWrapper
-        title="Support"
+        title={t('support.support')}
         headerLeft={
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -93,18 +94,18 @@ export default function SupportScreen() {
           <View style={[styles.successIcon, { backgroundColor: COLORS.success + '24' }]}>
             <Ionicons name="checkmark-circle" size={64} color={COLORS.success} />
           </View>
-          <Text style={[styles.successTitle, { color: colors.text }]}>Request received</Text>
+          <Text style={[styles.successTitle, { color: colors.text }]}>{t('support.requestReceived')}</Text>
           <Text style={[styles.successSub, { color: colors.textSecondary }]}>
-            We'll get back to you within 24–48 hours. Check your email for updates.
+            {t('support.requestReceivedSub')}
           </Text>
           <TouchableOpacity
             style={[styles.successBtn, { backgroundColor: COLORS.neonBlue[0] }]}
             onPress={() => { setSubmitted(false); }}
           >
-            <Text style={styles.successBtnText}>Send another</Text>
+            <Text style={styles.successBtnText}>{t('support.sendAnother')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.backLink} onPress={() => router.back()}>
-            <Text style={[styles.backLinkText, { color: colors.textSecondary }]}>Back to settings</Text>
+            <Text style={[styles.backLinkText, { color: colors.textSecondary }]}>{t('support.backToSettings')}</Text>
           </TouchableOpacity>
         </View>
       </ScreenWrapper>
@@ -113,7 +114,7 @@ export default function SupportScreen() {
 
   return (
     <ScreenWrapper
-      title="Support"
+      title={t('support.support')}
       headerLeft={
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -138,9 +139,9 @@ export default function SupportScreen() {
               end={{ x: 1, y: 1 }}
             />
             <Ionicons name="headset" size={40} color={COLORS.neonBlue?.[0] ?? '#60a5fa'} style={{ marginBottom: 12 }} />
-            <Text style={[styles.heroTitle, { color: colors.text }]}>We're here to help</Text>
+            <Text style={[styles.heroTitle, { color: colors.text }]}>{t('support.heroTitle')}</Text>
             <Text style={[styles.heroSub, { color: colors.textSecondary }]}>
-              Describe your issue and we'll follow up within 24–48 hours.
+              {t('support.heroSub')}
             </Text>
           </View>
 
@@ -152,7 +153,7 @@ export default function SupportScreen() {
             ]}
             value={message}
             onChangeText={(t) => { setMessage(t); setError(null); }}
-            placeholder="Describe your issue, question, or feedback..."
+            placeholder={t('support.placeholder')}
             placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={6}
@@ -181,7 +182,7 @@ export default function SupportScreen() {
             ) : (
               <>
                 <Ionicons name="send" size={18} color="#000" style={{ marginRight: 8 }} />
-                <Text style={styles.btnText}>Send request</Text>
+                <Text style={styles.btnText}>{t('support.sendRequest')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -189,7 +190,7 @@ export default function SupportScreen() {
           <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Ionicons name="mail" size={20} color={COLORS.success} />
             <View style={styles.infoTextWrap}>
-              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Need faster help?</Text>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('support.needFasterHelp')}</Text>
               <Text style={[styles.email, { color: COLORS.neonBlue?.[0] ?? '#60a5fa' }]}>help@orbtap.com</Text>
             </View>
           </View>
@@ -211,17 +212,17 @@ const styles = StyleSheet.create({
   backBtn: { padding: 8, marginRight: 8 },
   title: { fontSize: 20, fontWeight: '800', letterSpacing: 0.3 },
   keyboardView: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { ...SCROLL_CONTENT, paddingTop: SPACE.lg, paddingBottom: SPACE.xxxl },
   heroCard: {
-    borderRadius: 16,
+    borderRadius: RADIUS.base,
     borderWidth: 1,
-    padding: 24,
+    padding: SPACE.xl,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACE.xl,
   },
-  heroTitle: { fontSize: 18, fontWeight: '800', marginBottom: 8 },
-  heroSub: { fontSize: 14, textAlign: 'center', lineHeight: 22 },
-  label: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 10 },
+  heroTitle: { fontSize: TYPE.heading, fontWeight: '800', marginBottom: SPACE.sm },
+  heroSub: { fontSize: TYPE.label, textAlign: 'center', lineHeight: 22 },
+  label: { fontSize: TYPE.caption, fontWeight: '800', letterSpacing: 1.2, marginBottom: SPACE.md },
   input: {
     borderRadius: 14,
     padding: 18,

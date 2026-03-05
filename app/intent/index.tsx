@@ -15,6 +15,7 @@ import { INTENT_CATEGORY_LABELS } from '../../constants/orbIntent';
 import * as api from '../../services/orbIntent';
 import type { IntentDoc } from '../../constants/orbIntent';
 import { useI18n } from '../../context/I18nContext';
+import { SPACE, RADIUS, TYPE, SCROLL_CONTENT } from '../../constants/DesignTokens';
 
 type TabKey = 'feed' | 'mine' | 'rules' | 'inbox';
 
@@ -213,28 +214,28 @@ export default function OrbIntentHomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
-  backBtn: { marginRight: 12 },
-  title: { fontSize: 18, fontWeight: '700', flex: 1 },
-  postBtn: { padding: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACE.base, paddingVertical: SPACE.md, borderBottomWidth: 1 },
+  backBtn: { marginRight: SPACE.md },
+  title: { fontSize: TYPE.heading, fontWeight: '700', flex: 1 },
+  postBtn: { padding: SPACE.sm },
   tabRow: { flexDirection: 'row', borderBottomWidth: 1 },
-  tabPill: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabText: { fontSize: 13, fontWeight: '600' },
+  tabPill: { flex: 1, paddingVertical: SPACE.md, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabText: { fontSize: TYPE.label, fontWeight: '600' },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  loadWrap: { padding: 24, alignItems: 'center' },
-  loadText: { marginTop: 8 },
-  empty: { padding: 24, alignItems: 'center' },
-  emptyTitle: { fontSize: 16, marginBottom: 8 },
-  emptySub: { fontSize: 13, textAlign: 'center' },
-  primaryBtn: { marginTop: 16, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12 },
+  scrollContent: { ...SCROLL_CONTENT, paddingBottom: SPACE.xxxl },
+  loadWrap: { padding: SPACE.xl, alignItems: 'center' },
+  loadText: { marginTop: SPACE.sm },
+  empty: { padding: SPACE.xl, alignItems: 'center' },
+  emptyTitle: { fontSize: TYPE.subheading, marginBottom: SPACE.sm },
+  emptySub: { fontSize: TYPE.label, textAlign: 'center' },
+  primaryBtn: { marginTop: SPACE.base, paddingVertical: SPACE.md, paddingHorizontal: SPACE.lg, borderRadius: RADIUS.md },
   primaryBtnText: { color: '#fff', fontWeight: '700' },
-  card: { padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 10 },
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
-  cardMeta: { fontSize: 12 },
-  highScore: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  highScoreText: { fontSize: 11, fontWeight: '600' },
-  offState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  offTitle: { fontSize: 18, fontWeight: '700', marginTop: 12 },
-  offSub: { fontSize: 14, marginTop: 8, textAlign: 'center' },
+  card: { padding: SPACE.md, borderRadius: RADIUS.md, borderWidth: 1, marginBottom: SPACE.md },
+  cardTitle: { fontSize: TYPE.subheading, fontWeight: '700', marginBottom: SPACE.xs },
+  cardMeta: { fontSize: TYPE.caption },
+  highScore: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs, marginTop: 6 },
+  highScoreText: { fontSize: TYPE.caption, fontWeight: '600' },
+  offState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACE.xl },
+  offTitle: { fontSize: TYPE.heading, fontWeight: '700', marginTop: SPACE.md },
+  offSub: { fontSize: TYPE.label, marginTop: SPACE.sm, textAlign: 'center' },
 });

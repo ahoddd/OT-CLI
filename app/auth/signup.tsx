@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { OrbTapLogoMark } from '../../components/OrbTapLogoMark';
 import { PREAUTH } from '../../constants/PreAuthTheme';
+import { SPACE, RADIUS, TYPE } from '../../constants/DesignTokens';
 import { LandingVideoBackground } from '../../components/LandingVideoBackground';
 import { PrimaryButton, PreAuthInput } from '../../components/preauth';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
@@ -37,7 +38,7 @@ import { logSignupComplete } from '../../services/analytics';
 import { MINIMUM_AGE } from '../../constants/AppConfig';
 import { useWebTitle } from '../../hooks/useWebTitle';
 import { useI18n } from '../../context/I18nContext';
-import { signInWithGoogle, signInWithApple, ensureSocialUserProfile, isGoogleSignInAvailable, isAppleSignInAvailable } from '../../services/socialAuth';
+import { signInWithGoogle, signInWithApple, ensureSocialUserProfile, handleAppleRedirectResult, isGoogleSignInAvailable, isAppleSignInAvailable } from '../../services/socialAuth';
 import { HERO_STAGGER_MS } from '../../constants/DesignTokens';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -108,6 +109,7 @@ export default function SignupScreen() {
     try {
       const result = provider === 'google' ? await signInWithGoogle() : await signInWithApple();
       if (!result.success) {
+        if (result.message?.includes('Redirecting')) return;
         showAlert('Sign-up failed', result.message);
         return;
       }
@@ -119,6 +121,22 @@ export default function SignupScreen() {
     } finally {
       setSocialLoading(null);
     }
+  }, [router]);
+
+  // Web: complete Apple sign-in after redirect from Firebase handler
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    let cancelled = false;
+    handleAppleRedirectResult().then((credential) => {
+      if (cancelled || !credential) return;
+      ensureSocialUserProfile(credential).then(() => {
+        if (!cancelled) {
+          safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.replace('/auth/onboarding' as any);
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+    return () => { cancelled = true; };
   }, [router]);
 
   const monthScrollRef = useRef<ScrollView>(null);

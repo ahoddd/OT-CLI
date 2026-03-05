@@ -15,7 +15,7 @@ import Animated, {
   Easing,
   interpolateColor,
 } from 'react-native-reanimated';
-import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, RadialGradient, LinearGradient, Stop, Ellipse } from 'react-native-svg';
 
 /** Hold duration to open Scan on Orb tab. Other tabs use SUBMENU_LONG_PRESS_MS = this minus 500ms. */
 export const ORB_LONG_PRESS_MS = 1000;
@@ -92,8 +92,9 @@ export const TabBarOrb = () => {
     );
     return {
       shadowColor: color,
-      shadowOpacity: 0.45 + breathOpacity.value * 0.35,
-      shadowRadius: 10 + breathScale.value * 2,
+      shadowOpacity: 0.5 + breathOpacity.value * 0.4,
+      shadowRadius: 12 + breathScale.value * 3,
+      shadowOffset: { width: 0, height: 2 },
     };
   });
 
@@ -183,24 +184,43 @@ export const TabBarOrb = () => {
               <Defs>
                 <RadialGradient
                   id="orbSphere"
-                  cx="35%"
-                  cy="35%"
-                  r="65%"
-                  fx="32%"
-                  fy="32%"
+                  cx="32%"
+                  cy="32%"
+                  r="68%"
+                  fx="28%"
+                  fy="28%"
+                >
+                  <Stop offset="0%" stopColor="rgba(255,255,255,0.42)" stopOpacity={1} />
+                  <Stop offset="38%" stopColor="#243b55" stopOpacity={1} />
+                  <Stop offset="75%" stopColor="#0f172a" stopOpacity={1} />
+                  <Stop offset="100%" stopColor="#020617" stopOpacity={1} />
+                </RadialGradient>
+                <LinearGradient
+                  id="orbHighlight"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
                 >
                   <Stop offset="0%" stopColor="rgba(255,255,255,0.35)" stopOpacity={1} />
-                  <Stop offset="45%" stopColor="#1e293b" stopOpacity={1} />
-                  <Stop offset="100%" stopColor="#0f172a" stopOpacity={1} />
-                </RadialGradient>
+                  <Stop offset="50%" stopColor="rgba(255,255,255,0.08)" stopOpacity={1} />
+                  <Stop offset="100%" stopColor="rgba(255,255,255,0)" stopOpacity={0} />
+                </LinearGradient>
               </Defs>
               <Circle
                 cx={ORB_R}
                 cy={ORB_R}
                 r={ORB_R - 1}
                 fill="url(#orbSphere)"
-                stroke="rgba(255,255,255,0.12)"
+                stroke="rgba(255,255,255,0.14)"
                 strokeWidth={1}
+              />
+              <Ellipse
+                cx={ORB_R * 0.42}
+                cy={ORB_R * 0.4}
+                rx={ORB_R * 0.5}
+                ry={ORB_R * 0.32}
+                fill="url(#orbHighlight)"
               />
               <AnimatedCircle
                 cx={ORB_R}

@@ -43,7 +43,7 @@ import { alert as alertDialog } from '../utils/alert';
 import { promptAndOpenDirections } from '../utils/openDirections';
 import { MoreSection } from '../components/MoreSection';
 import { KitEmptyState } from '../components/ui';
-import { SPACE } from '../constants/DesignTokens';
+import { SPACE, SCROLL_CONTENT, RADIUS, TYPE } from '../constants/DesignTokens';
 import { MOOD_PRESETS, type MoodId } from '../constants/MissionsMoods';
 import { useI18n } from '../context/I18nContext';
 
@@ -724,7 +724,7 @@ export default function MissionsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 32 },
+  scrollContent: { ...SCROLL_CONTENT },
   // Hero
   heroOuter: { borderRadius: 24, marginBottom: 28, overflow: 'hidden' },
   heroGradient: { ...StyleSheet.absoluteFillObject },

@@ -27,6 +27,7 @@ import { COLORS } from '../constants/Colors';
 import { useUserLocation } from '../context/UserLocationContext';
 import { distanceToPartner, formatDistanceMi } from '../utils/location';
 import { useI18n } from '../context/I18nContext';
+import { LIST_OPTIMIZATION } from '../constants/DesignTokens';
 
 const PARTNER_TIERS: (PartnerTier | 'all')[] = ['all', 'silver', 'gold', 'platinum'];
 const PARTNER_TIER_LABELS_AND_ALL: Record<PartnerTier | 'all', string> = { all: 'All', silver: 'Silver', gold: 'Gold', platinum: 'Platinum' };
@@ -231,6 +232,10 @@ export default function PartnersListScreen() {
           data={orderedPartners}
           keyExtractor={(p) => p.id}
           renderItem={renderPartner}
+          removeClippedSubviews={LIST_OPTIMIZATION.removeClippedSubviews}
+          maxToRenderPerBatch={LIST_OPTIMIZATION.maxToRenderPerBatch}
+          windowSize={LIST_OPTIMIZATION.windowSize}
+          initialNumToRender={LIST_OPTIMIZATION.initialNumToRender}
           contentContainerStyle={[styles.listContent, { paddingBottom: 24 }]}
           ListEmptyComponent={
             <View style={styles.empty}>

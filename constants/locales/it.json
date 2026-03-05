@@ -8,7 +8,15 @@
     "close": "Chiudi",
     "loading": "Caricamento…",
     "error": "Qualcosa è andato storto.",
-    "retry": "Riprova"
+    "retry": "Riprova",
+    "logout": "Esci",
+    "logoutConfirm": "Tornare all'accesso?",
+    "delete": "Elimina",
+    "deleteConfirm": "Sei sicuro?",
+    "saving": "Salvataggio…",
+    "reject": "Rifiuta",
+    "rejected": "Rifiutato",
+    "ok": "OK"
   },
   "auth": {
     "signIn": "Accedi",
@@ -73,7 +81,12 @@
     "imAtLeast": "Ho almeno {{age}} anni.",
     "terms": "Termini",
     "privacy": "Privacy",
-    "iAgreeTo": "Accetto i "
+    "iAgreeTo": "Accetto i ",
+    "signInWithGoogle": "Continua con Google",
+    "signInWithApple": "Continua con Apple",
+    "signUpWithGoogle": "Iscriviti con Google",
+    "signUpWithApple": "Iscriviti con Apple",
+    "orContinueWithEmail": "o continua con email"
   },
   "home": {
     "tonight": "Stasera",
@@ -283,7 +296,11 @@
     "restartNow": "Riavvia ora",
     "later": "Dopo",
     "languageUpdatedTitle": "Lingua aggiornata",
-    "languageUpdatedMessage": "Riavvia l'app per vedere la nuova lingua ovunque."
+    "languageUpdatedMessage": "Riavvia l'app per vedere la nuova lingua ovunque.",
+    "photoPermissionTitle": "Accesso foto",
+    "photoPermissionMessage": "Consenti l'accesso alle foto per impostare un'immagine del profilo.",
+    "photoModerationRejected": "Foto non consentita",
+    "uploadFailed": "Caricamento fallito"
   },
   "onboarding": {
     "languageTitle": "Scegli la tua lingua",
@@ -338,5 +355,26 @@
     "guidelines": "Linee guida community",
     "acceptableUse": "Policy uso accettabile",
     "help": "Centro assistenza"
-  }
+  },
+  "profile": { "shareProfile": "Share Profile", "editProfile": "Edit Profile", "partner": "PARTNER", "best": "Best", "weeklyWins": "Weekly wins", "visits": "visits", "level": "Level", "learn": "LEARN", "achievements": "Achievements", "inviteFriends": "Invite friends", "you": "You" },
+  "scan": { "scanWorksInApp": "Scan works in the app", "scanWorksSub": "Use the OrbTap app on your phone to scan partner QR codes and redeem perks.", "appStore": "App Store", "googlePlay": "Google Play", "allowCamera": "Allow camera", "deny": "Deny", "pointAtQR": "Point your camera at a partner's QR code", "redeemPerk": "Redeem a perk", "earnOT": "Earn OT", "cameraNotOpened": "Camera wasn't opened. Tap below to try again when you're ready to scan.", "openCamera": "Open camera", "openCameraTitle": "Open camera to scan?", "openCameraBody": "OrbTap would like to use your camera to scan partner QR codes and redeem perks.", "rememberMyChoice": "Remember my choice for future scans", "requestPermission": "Request Permission", "deniedPrompt": "You chose not to use the camera. Tap below to open the camera when you're ready to scan.", "requestingPermission": "Requesting permission…", "needsCamera": "OrbTap needs camera to scan partner QR codes." },
+  "missions": { "missions": "Missions", "allDay": "All day", "allDaySub": "3 missions · breakfast, lunch, dinner", "lunchDinner": "Lunch & dinner", "lunchDinnerSub": "2 missions · one check-in each", "dinner": "Dinner", "dinnerSub": "1 mission · one check-in", "breakfast": "Breakfast", "lunch": "Lunch", "expired": "Expired", "due": "Due", "left": "left", "generate": "Generate", "complete": "Complete", "todayMissions": "Today's missions", "noMissions": "No missions yet", "tapToGenerate": "Tap to generate today's missions" },
+  "leaderboard": { "leaderboard": "Leaderboard", "explorers": "Explorers", "partners": "Partners", "spheres": "Spheres", "streaks": "Streaks", "stats": "Stats", "missions": "Missions", "orbVote": "OrbVote", "sharePrompt": "Rising on the board? Share your rank and invite friends to compete.", "shareYourRank": "Share your rank", "you": "You", "perk": "perk", "perks": "perks" },
+  "bookmarks": { "bookmarks": "Bookmarks", "savedPartners": "Saved partners", "savedPerks": "Saved perks", "subtitle": "Saved partners and perks — tap to open, bookmark again to remove", "empty": "Nothing saved yet", "emptySub": "Save partners and perks from the map or grid.", "savePartnersPerks": "Save partners and perks", "savePartnersPerksSub": "Tap the bookmark icon on any partner or perk to save it here.", "exploreMap": "Explore map", "dailyMissions": "Daily missions", "unlockUnlimitedFollows": "Unlock unlimited follows" },
+  "knowledge": { "knowledge": "Knowledge", "learnMore": "Learn more", "empty": "No articles yet" },
+  "stats": { "stats": "Stats", "yourImpact": "Your impact", "empty": "No stats yet" },
+  "pulse": { "pulse": "Pulse", "liveDrops": "Live drops", "reserve": "Reserve", "empty": "No live drops" },
+  "premium": { "premium": "Premium", "unlockMore": "Unlock more", "upgrade": "Upgrade" },
+  "notFound": { "title": "Not found", "subtitle": "This page doesn't exist or was removed.", "goHome": "Go home" },
+  "notifications": { "notifications": "Notifications", "empty": "No notifications yet" },
+  "feed": { "feed": "Feed", "empty": "No posts yet" },
+  "partners": { "partners": "Partners", "browse": "Browse partners", "empty": "No partners nearby" },
+  "support": { "support": "Support", "helpCenter": "Help Center", "contact": "Contact us" },
+  "report": { "title": "Report", "reporting": "Reporting: {{name}}", "reasonLabel": "Reason for report", "placeholder": "Describe the issue...", "submitReport": "Submit Report", "thankYouTitle": "Thank you for your report", "thankYouMessage": "We've received it and will review it within 24 hours. We appreciate your help keeping OrbTap safe." },
+  "bounty": { "title": "OrbBounty™", "feed": "Feed", "mine": "My Bounties", "inbox": "Inbox", "post": "Post", "offTitle": "OrbBounty is off", "offSub": "Enable in Admin Hub.", "heroTitle": "Post what you want. Partners compete to win you.", "heroDesc": "Create a bounty with your budget and window. Businesses bid. You accept one, fulfill in person, and get a shareable Win Card.", "heroTrust": "Verified fulfillment · Real deals", "emptyFeed": "No active bounties. Post one and let partners compete.", "emptyMine": "You haven't posted any bounties yet.", "emptyInbox": "Bounties you can bid on will appear here.", "searchPlaceholder": "Search bounties...", "open": "Open", "locked": "Locked", "fulfilled": "Fulfilled", "expired": "Expired", "cancelled": "Cancelled" },
+  "orbpilot": { "scanTitle": "Scan QR", "scanFailed": "Scan Failed", "scanFailedMessage": "Could not verify this QR code. Please try again.", "tryAgain": "Try Again", "error": "Error", "errorMessage": "Something went wrong. Please check your connection and try again.", "retry": "Retry" },
+  "admin": { "admin": "Admin", "dashboard": "Dashboard" },
+  "partner": { "dashboard": "Dashboard", "perks": "Perks", "polls": "Polls", "feed": "Feed", "settings": "Settings" },
+  "workOrders": { "title": "OrbWork Orders™", "requestWork": "Request Work", "myRequests": "My requests", "partnerInbox": "Partner inbox", "offTitle": "OrbOps is off", "offSub": "Enable in Admin Hub.", "heroTitle": "Request work, track it to completion", "heroDesc": "As a customer: start a request from a partner page. As a partner: see incoming requests and accept, schedule, and complete with proof. Everyone stays in sync.", "heroTrust": "Verified milestones · Clear status timeline", "loading": "Loading…", "emptyTitle": "No work orders yet", "emptyCustomer": "Request work from a partner page (Request Work).", "emptyPartner": "Incoming requests will appear here.", "status_REQUESTED": "Requested", "status_CLARIFYING": "Clarifying", "status_ACCEPTED": "Accepted", "status_SCHEDULED": "Scheduled", "status_EN_ROUTE": "En route", "status_STARTED": "Started", "status_MIDPOINT_PROOF": "In progress", "status_COMPLETED_PENDING_APPROVAL": "Pending your approval", "status_COMPLETED": "Completed", "status_DISPUTED": "Disputed", "status_CANCELED": "Canceled" },
+  "orbpass": { "title": "OrbPass™", "offTitle": "OrbPass is off", "offSub": "Enable it in Admin Hub.", "loading": "Loading…", "retry": "Retry", "yourTier": "Your tier: {{tier}}", "orbPassEnabled": "OrbPass enabled", "notEligible": "OrbPass is a Premium member benefit. Upgrade to unlock perks at local partners.", "sampleOffers": "Sample offers you could unlock", "withOrbPassYouGet": "With OrbPass you get:", "benefit1": "Monthly redemptions at participating partners", "benefit2": "Exclusive member-only offers and discounts", "benefit3": "One-tap redeem with PIN or QR at the venue", "benefit4": "Support local businesses while saving", "benefit5": "Redemption history and partner inbox (for partners)", "seeAllPlans": "See all plans", "viewOrbTapPlans": "View OrbTap Plans", "nearbyOffers": "Nearby offers", "viewMap": "View map", "redemptionsRemaining": "{{remaining}}/{{total}} redemptions remaining this month", "noOffersInArea": "No OrbPass offers in your area yet. Partners can enable OrbPass in their settings.", "viewNearbyOnMap": "View nearby partners on map", "value": "Value: ${{value}}" }
 }

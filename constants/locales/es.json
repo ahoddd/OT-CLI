@@ -8,7 +8,15 @@
     "close": "Cerrar",
     "loading": "Cargando…",
     "error": "Algo salió mal.",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "logout": "Cerrar sesión",
+    "logoutConfirm": "¿Volver a la pantalla de inicio de sesión?",
+    "delete": "Eliminar",
+    "deleteConfirm": "¿Estás seguro?",
+    "saving": "Guardando…",
+    "reject": "Rechazar",
+    "rejected": "Rechazado",
+    "ok": "OK"
   },
   "auth": {
     "signIn": "Entrar",
@@ -73,7 +81,12 @@
     "imAtLeast": "Tengo al menos {{age}} años.",
     "terms": "Términos",
     "privacy": "Privacidad",
-    "iAgreeTo": "Acepto los "
+    "iAgreeTo": "Acepto los ",
+    "signInWithGoogle": "Continuar con Google",
+    "signInWithApple": "Continuar con Apple",
+    "signUpWithGoogle": "Registrarse con Google",
+    "signUpWithApple": "Registrarse con Apple",
+    "orContinueWithEmail": "o continuar con correo"
   },
   "home": {
     "tonight": "Esta noche",
@@ -340,7 +353,7 @@
     "help": "Centro de ayuda"
   },
   "profile": { "shareProfile": "Compartir perfil", "editProfile": "Editar perfil", "partner": "SOCIO", "best": "Mejor", "you": "Tú" },
-  "scan": { "scanWorksInApp": "Escanear en la app", "scanWorksSub": "Usa la app OrbTap en tu móvil para escanear códigos QR y canjear perks.", "appStore": "App Store", "googlePlay": "Google Play" },
+  "scan": { "scanWorksInApp": "Escanear en la app", "scanWorksSub": "Usa la app OrbTap en tu móvil para escanear códigos QR y canjear perks.", "appStore": "App Store", "googlePlay": "Google Play", "allowCamera": "Permitir cámara", "deny": "Denegar", "pointAtQR": "Apunta la cámara al código QR del socio", "redeemPerk": "Canjear un perk", "earnOT": "Ganar OT", "cameraNotOpened": "La cámara no se abrió. Toca abajo para intentar de nuevo cuando quieras escanear.", "openCamera": "Abrir cámara", "openCameraTitle": "¿Abrir cámara para escanear?", "openCameraBody": "OrbTap quiere usar tu cámara para escanear códigos QR de socios y canjear perks.", "rememberMyChoice": "Recordar mi elección para futuros escaneos", "requestPermission": "Solicitar permiso", "deniedPrompt": "Elegiste no usar la cámara. Toca abajo para abrirla cuando quieras escanear.", "requestingPermission": "Solicitando permiso…", "needsCamera": "OrbTap necesita la cámara para escanear códigos QR de socios." },
   "missions": { "missions": "Misiones", "allDay": "Todo el día", "allDaySub": "3 misiones · desayuno, comida, cena", "lunchDinner": "Comida y cena", "lunchDinnerSub": "2 misiones · un check-in cada una", "dinner": "Cena", "dinnerSub": "1 misión · un check-in", "breakfast": "Desayuno", "lunch": "Comida", "expired": "Caducado", "generate": "Generar" },
   "leaderboard": { "leaderboard": "Clasificación", "explorers": "Exploradores", "partners": "Socios", "spheres": "Esferas", "streaks": "Rachas", "stats": "Estadísticas", "missions": "Misiones", "orbVote": "OrbVote", "sharePrompt": "¿Subiendo en el ranking? Comparte tu posición e invita a amigos.", "shareYourRank": "Compartir tu posición", "you": "Tú", "perk": "perk", "perks": "perks" },
   "bookmarks": { "bookmarks": "Favoritos", "subtitle": "Socios y perks guardados — toca para abrir, guardar de nuevo para quitar.", "savePartnersPerks": "Guardar socios y perks", "savePartnersPerksSub": "Toca el icono de favoritos en cualquier socio o perk.", "exploreMap": "Explorar mapa", "dailyMissions": "Misiones diarias", "unlockUnlimitedFollows": "Desbloquear seguimientos ilimitados" },
@@ -353,6 +366,9 @@
   "feed": { "feed": "Feed", "empty": "Sin publicaciones aún" },
   "partners": { "partners": "Socios", "browse": "Ver socios", "empty": "No hay socios cerca" },
   "support": { "support": "Soporte", "helpCenter": "Centro de ayuda", "contact": "Contáctanos" },
+  "report": { "title": "Reportar", "reporting": "Reportando: {{name}}", "reasonLabel": "Motivo del reporte", "placeholder": "Describe el problema...", "submitReport": "Enviar reporte", "thankYouTitle": "Gracias por tu reporte", "thankYouMessage": "Lo hemos recibido y lo revisaremos en 24 horas. Agradecemos tu ayuda para mantener OrbTap seguro." },
+  "bounty": { "title": "OrbBounty™", "feed": "Feed", "mine": "Mis Bounties", "inbox": "Bandeja", "post": "Publicar", "offTitle": "OrbBounty desactivado", "offSub": "Actívalo en el Hub de Admin.", "heroTitle": "Publica lo que quieras. Los socios compiten por ti.", "heroDesc": "Crea una bounty con tu presupuesto y ventana. Los negocios pujan. Tú aceptas uno, cumples en persona y obtienes una Win Card compartible.", "heroTrust": "Cumplimiento verificado · Ofertas reales", "emptyFeed": "No hay bounties activas. Publica una y deja que los socios compitan.", "emptyMine": "Aún no has publicado bounties.", "emptyInbox": "Las bounties en las que puedes pujar aparecerán aquí.", "searchPlaceholder": "Buscar bounties...", "open": "Abierto", "locked": "Bloqueado", "fulfilled": "Cumplido", "expired": "Expirado", "cancelled": "Cancelado" },
+  "orbpilot": { "scanTitle": "Escanear QR", "scanFailed": "Escaneo fallido", "scanFailedMessage": "No se pudo verificar este código QR. Intenta de nuevo.", "tryAgain": "Reintentar", "error": "Error", "errorMessage": "Algo salió mal. Revisa tu conexión e intenta de nuevo.", "retry": "Reintentar" },
   "admin": { "admin": "Admin", "dashboard": "Panel" },
   "partner": { "dashboard": "Panel", "perks": "Perks", "polls": "Encuestas", "feed": "Feed", "settings": "Ajustes" },
   "workOrders": {

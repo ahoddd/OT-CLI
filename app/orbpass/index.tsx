@@ -18,6 +18,7 @@ import { getPartnerHeroImage } from '../../constants/PartnerCategoryPlaceholders
 import { COLORS } from '../../constants/Colors';
 import * as api from '../../services/orbPass';
 import { useI18n } from '../../context/I18nContext';
+import { SCROLL_CONTENT } from '../../constants/DesignTokens';
 
 const SAMPLE_OFFERS = [
   { offerId: 'sample1', partnerId: 'p1', partnerName: 'Sample Cafe', title: 'Free coffee with any pastry', valueCents: 500 },
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', flex: 1 },
   iconBtn: { padding: 8 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
+  scrollContent: { ...SCROLL_CONTENT, paddingBottom: 40 },
   statusCard: { padding: 16, borderRadius: 14, borderWidth: 1, marginBottom: 20 },
   statusTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   eligibleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
