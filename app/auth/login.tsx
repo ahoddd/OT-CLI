@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, KeyboardAvoidingView, Platform, Dimensions, Keyboard } from 'react-native';
 import { alert as showAlert } from '../../utils/alert';
 import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
@@ -18,6 +18,8 @@ import { PrimaryButton, PreAuthInput } from '../../components/preauth';
 import { useWebTitle } from '../../hooks/useWebTitle';
 import { useI18n } from '../../context/I18nContext';
 import { safeHaptics, Haptics } from '../../utils/safeHaptics';
+import { signInWithGoogle, signInWithApple, ensureSocialUserProfile, isGoogleSignInAvailable, isAppleSignInAvailable } from '../../services/socialAuth';
+import { HERO_STAGGER_MS } from '../../constants/DesignTokens';
 
 const BUBBLE_SHOWN_KEY = 'orbtap_login_bubble_shown';
 
@@ -42,7 +44,29 @@ export default function LoginScreen() {
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [hasStoredCreds, setHasStoredCreds] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
   const hasShownBubbleRef = useRef(false);
+
+  const handleSocialSignIn = useCallback(async (provider: 'google' | 'apple') => {
+    setLoginError(null);
+    setSocialLoading(provider);
+    try {
+      const result = provider === 'google' ? await signInWithGoogle() : await signInWithApple();
+      if (!result.success) {
+        setLoginError(result.message);
+        safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        return;
+      }
+      await ensureSocialUserProfile(result.credential);
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace('/' as any);
+    } catch (e: any) {
+      setLoginError(e?.message ?? 'Sign-in failed. Try again.');
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setSocialLoading(null);
+    }
+  }, [router]);
 
   useEffect(() => {
     (async () => {
@@ -188,7 +212,7 @@ export default function LoginScreen() {
 
       <KeyboardAvoidingView behavior={Platform.OS === 'web' ? undefined : (Platform.OS === 'ios' ? 'padding' : 'height')} style={styles.content}>
         <View style={styles.glassCard}>
-        <Animated.View entering={FadeInUp.duration(1000)} style={styles.logoSection}>
+        <Animated.View entering={FadeInUp.duration(600)} style={styles.logoSection}>
           <OrbTapLogoMark variant="hero" width={160} height={138} />
           <Text style={[styles.tagline, { color: '#FFFFFF' }]}>{t('auth.tagline')}</Text>
           <View style={[styles.socialProof, { backgroundColor: PREAUTH.surface, borderColor: PREAUTH.surfaceBorder }]}>
@@ -197,8 +221,47 @@ export default function LoginScreen() {
           </View>
         </Animated.View>
 
+        {/* Social sign-in — primary path first (UX best practice) */}
+        <View style={styles.socialRow}>
+          {isGoogleSignInAvailable() && (
+            <Animated.View entering={FadeInDown.delay(HERO_STAGGER_MS).duration(400)} style={styles.socialBtnWrap}>
+              <TouchableOpacity
+                style={[styles.socialBtn, styles.socialBtnGoogle]}
+                onPress={() => { dismissBubble(); handleSocialSignIn('google'); }}
+                disabled={!!socialLoading}
+                accessibilityLabel={t('auth.signInWithGoogle')}
+                accessibilityRole="button"
+              >
+                <Ionicons name="logo-google" size={20} color="#fff" />
+                <Text style={styles.socialBtnText}>{socialLoading === 'google' ? '…' : t('auth.signInWithGoogle')}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+          {isAppleSignInAvailable() && (
+            <Animated.View entering={FadeInDown.delay(HERO_STAGGER_MS * 2).duration(400)} style={styles.socialBtnWrap}>
+              <TouchableOpacity
+                style={[styles.socialBtn, styles.socialBtnApple]}
+                onPress={() => { dismissBubble(); handleSocialSignIn('apple'); }}
+                disabled={!!socialLoading}
+                accessibilityLabel={t('auth.signInWithApple')}
+                accessibilityRole="button"
+              >
+                <Ionicons name="logo-apple" size={22} color="#fff" />
+                <Text style={styles.socialBtnText}>{socialLoading === 'apple' ? '…' : t('auth.signInWithApple')}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+        </View>
+        {(isGoogleSignInAvailable() || isAppleSignInAvailable()) && (
+          <Animated.View entering={FadeIn.delay(HERO_STAGGER_MS * 3).duration(300)} style={styles.orDivider}>
+            <View style={styles.orLine} />
+            <Text style={styles.orText}>{t('auth.orContinueWithEmail')}</Text>
+            <View style={styles.orLine} />
+          </Animated.View>
+        )}
+
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <Animated.View entering={FadeIn.delay(500).duration(1000)} style={styles.form}>
+        <Animated.View entering={FadeIn.delay((isGoogleSignInAvailable() || isAppleSignInAvailable()) ? HERO_STAGGER_MS * 4 : 200).duration(400)} style={styles.form}>
           <PreAuthInput
             placeholder={t('auth.emailPlaceholder')}
             value={email}
@@ -356,11 +419,30 @@ const styles = StyleSheet.create({
         }
       : {}),
   },
-  logoSection: { alignItems: 'center', marginBottom: 50 },
+  logoSection: { alignItems: 'center', marginBottom: 28 },
   tagline: { color: '#FFFFFF', letterSpacing: 3, fontSize: 10, marginTop: 16, fontWeight: 'bold' },
   socialProof: { flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
   greenDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: PREAUTH.primary, marginRight: 6 },
   proofText: { fontSize: 10, fontWeight: 'bold' },
+
+  socialRow: { flexDirection: 'column', gap: 12, marginBottom: 8 },
+  socialBtnWrap: { width: '100%' },
+  socialBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    minHeight: PREAUTH.minButtonHeight,
+    borderRadius: PREAUTH.radiusButton,
+    paddingHorizontal: 20,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
+  },
+  socialBtnGoogle: { backgroundColor: '#4285f4' },
+  socialBtnApple: { backgroundColor: '#000' },
+  socialBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  orDivider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+  orLine: { flex: 1, height: 1, backgroundColor: PREAUTH.surfaceBorder },
+  orText: { color: PREAUTH.textMuted, fontSize: 12, fontWeight: '600' },
 
   form: { width: '100%', gap: 16 },
   inputWrapper: { borderRadius: 12, borderWidth: 1, overflow: 'hidden' },

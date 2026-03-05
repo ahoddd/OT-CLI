@@ -73,7 +73,12 @@
     "imAtLeast": "I'm at least {{age}} years old.",
     "terms": "Terms",
     "privacy": "Privacy",
-    "iAgreeTo": "I agree to "
+    "iAgreeTo": "I agree to ",
+    "signInWithGoogle": "Continue with Google",
+    "signInWithApple": "Continue with Apple",
+    "signUpWithGoogle": "Sign up with Google",
+    "signUpWithApple": "Sign up with Apple",
+    "orContinueWithEmail": "or continue with email"
   },
   "home": {
     "tonight": "Tonight",

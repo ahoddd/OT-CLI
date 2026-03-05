@@ -37,6 +37,8 @@ import { logSignupComplete } from '../../services/analytics';
 import { MINIMUM_AGE } from '../../constants/AppConfig';
 import { useWebTitle } from '../../hooks/useWebTitle';
 import { useI18n } from '../../context/I18nContext';
+import { signInWithGoogle, signInWithApple, ensureSocialUserProfile, isGoogleSignInAvailable, isAppleSignInAvailable } from '../../services/socialAuth';
+import { HERO_STAGGER_MS } from '../../constants/DesignTokens';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const CURRENT_YEAR = new Date().getFullYear();
@@ -98,7 +100,26 @@ export default function SignupScreen() {
   const [birthdayModalVisible, setBirthdayModalVisible] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'taken' | 'available'>('idle');
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
   const usernameCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSocialSignUp = useCallback(async (provider: 'google' | 'apple') => {
+    setSocialLoading(provider);
+    try {
+      const result = provider === 'google' ? await signInWithGoogle() : await signInWithApple();
+      if (!result.success) {
+        showAlert('Sign-up failed', result.message);
+        return;
+      }
+      await ensureSocialUserProfile(result.credential);
+      safeHaptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace('/auth/onboarding' as any);
+    } catch (e: any) {
+      showAlert('Sign-up failed', e?.message ?? 'Try again.');
+    } finally {
+      setSocialLoading(null);
+    }
+  }, [router]);
 
   const monthScrollRef = useRef<ScrollView>(null);
   const dayScrollRef = useRef<ScrollView>(null);
@@ -262,6 +283,45 @@ export default function SignupScreen() {
               </View>
             ) : null}
           </Animated.View>
+
+          {/* Social sign-up — primary path first */}
+          <View style={styles.socialRow}>
+            {isGoogleSignInAvailable() && (
+              <Animated.View entering={FadeInDown.delay(HERO_STAGGER_MS).duration(400).springify()} style={styles.socialBtnWrap}>
+                <TouchableOpacity
+                  style={[styles.socialBtn, styles.socialBtnGoogle]}
+                  onPress={() => handleSocialSignUp('google')}
+                  disabled={!!socialLoading}
+                  accessibilityLabel={t('auth.signUpWithGoogle')}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="logo-google" size={20} color="#fff" />
+                  <Text style={styles.socialBtnText}>{socialLoading === 'google' ? '…' : t('auth.signUpWithGoogle')}</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+            {isAppleSignInAvailable() && (
+              <Animated.View entering={FadeInDown.delay(HERO_STAGGER_MS * 2).duration(400).springify()} style={styles.socialBtnWrap}>
+                <TouchableOpacity
+                  style={[styles.socialBtn, styles.socialBtnApple]}
+                  onPress={() => handleSocialSignUp('apple')}
+                  disabled={!!socialLoading}
+                  accessibilityLabel={t('auth.signUpWithApple')}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="logo-apple" size={22} color="#fff" />
+                  <Text style={styles.socialBtnText}>{socialLoading === 'apple' ? '…' : t('auth.signUpWithApple')}</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </View>
+          {(isGoogleSignInAvailable() || isAppleSignInAvailable()) && (
+            <Animated.View entering={FadeInDown.delay(HERO_STAGGER_MS * 3).duration(300)} style={styles.orDivider}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>{t('auth.orContinueWithEmail')}</Text>
+              <View style={styles.orLine} />
+            </Animated.View>
+          )}
 
           <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.form}>
@@ -498,6 +558,24 @@ const styles = StyleSheet.create({
     borderColor: PREAUTH.primary + '40',
   },
   inviteBannerText: { color: PREAUTH.primary, fontSize: 12, fontWeight: '700', flex: 1 },
+  socialRow: { flexDirection: 'column', gap: 10, marginBottom: 8 },
+  socialBtnWrap: { width: '100%' },
+  socialBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    minHeight: PREAUTH.minButtonHeight,
+    borderRadius: PREAUTH.radiusButton,
+    paddingHorizontal: 20,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
+  },
+  socialBtnGoogle: { backgroundColor: '#4285f4' },
+  socialBtnApple: { backgroundColor: '#000' },
+  socialBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  orDivider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 12 },
+  orLine: { flex: 1, height: 1, backgroundColor: PREAUTH.surfaceBorder },
+  orText: { color: PREAUTH.textMuted, fontSize: 12, fontWeight: '600' },
   form: { gap: 8 },
   fieldLabel: { fontSize: 11, fontWeight: '700', marginBottom: 2 },
   input: {

@@ -95,6 +95,7 @@ export default function ScanScreen() {
   const [gpsState, setGpsState] = useState<GpsLockState>('searching');
   const [userGps, setUserGps] = useState<{ lat: number; lng: number } | null>(null);
   const [torchOn, setTorchOn] = useState(false);
+  const [isScreenFocused, setIsScreenFocused] = useState(false);
   const stampScanEnabled = Boolean(flags.moduleStampCards && flags.stampCardsQrStamping);
 
   // Success flash overlay (one-shot on successful scan; no duplicate frame — ScannerHUD is the single reticle)
@@ -186,7 +187,9 @@ export default function ScanScreen() {
   }, [shouldUseCamera]);
 
   useFocusEffect(useCallback(() => {
+    setIsScreenFocused(true);
     setScanned(false);
+    return () => setIsScreenFocused(false);
   }, []));
 
   const saveConsent = async (value: 'granted' | 'denied') => {
@@ -483,6 +486,18 @@ export default function ScanScreen() {
   }
 
   const frameColor = accentColor;
+
+  // When scan screen is not focused (e.g. user left via orb or switched tab), do not render
+  // the camera so it fully stops and does not scan in the background.
+  if (!isScreenFocused) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.centeredText, { color: colors.textSecondary }]}>
+          Hold the Orb to open the scanner.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

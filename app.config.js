@@ -55,6 +55,7 @@ export default {
       startUrl: "/"
     },
     plugins: [
+      "expo-apple-authentication",
       "@react-native-community/datetimepicker",
       "./plugins/withRNFBPodfileFix",
       "@react-native-firebase/app",
